@@ -7,4 +7,6 @@ RUN apk --update add go ca-certificates && \
     go get github.com/cloudflare/complainer/... && \
     apk del go
 
+USER nobody
+
 ENTRYPOINT ["/go/bin/complainer"]
