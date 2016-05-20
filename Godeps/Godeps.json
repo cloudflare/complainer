@@ -1,0 +1,35 @@
+{
+	"ImportPath": "github.com/cloudflare/complainer",
+	"GoVersion": "go1.6",
+	"GodepVersion": "v60",
+	"Packages": [
+		"./..."
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/getsentry/raven-go",
+			"Rev": "27227cf2d7c78156114fb74b83ba4dea6c433e22"
+		},
+		{
+			"ImportPath": "github.com/goamz/goamz/aws",
+			"Rev": "02d5144a587b982e33b95f484a34164ce6923c99"
+		},
+		{
+			"ImportPath": "github.com/goamz/goamz/s3",
+			"Rev": "02d5144a587b982e33b95f484a34164ce6923c99"
+		},
+		{
+			"ImportPath": "github.com/google/go-querystring/query",
+			"Rev": "9235644dd9e52eeae6fa48efd539fdc351a0af53"
+		},
+		{
+			"ImportPath": "github.com/tbruyelle/hipchat-go/hipchat",
+			"Comment": "v1.1-26-g8b2e6b6",
+			"Rev": "8b2e6b6e05bccbb3d6487dae9162b91a4be03b22"
+		},
+		{
+			"ImportPath": "github.com/vaughan0/go-ini",
+			"Rev": "a98ad7ee00ec53921f08832bc06ecf7fd600e6a1"
+		}
+	]
+}

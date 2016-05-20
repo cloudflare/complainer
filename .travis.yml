@@ -1,0 +1,11 @@
+language: go
+
+go:
+  - 1.6
+  - tip
+
+before_script:
+  - go install ./...
+  - go get github.com/alecthomas/gometalinter
+  - gometalinter --install --update
+  - GO_VENDOR=1 GO15VENDOREXPERIMENT=1 gometalinter --cyclo-over 12 --deadline 60s ./...
