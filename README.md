@@ -130,3 +130,11 @@ Set of labels would look like this:
 * `complainer_external_sentry_dsn: FOO` - for external Sentry.
 
 Internal and external complainers could have different upload services.
+
+## Copyright
+
+* Copyright 2016 CloudFlare
+
+## License
+
+MIT
