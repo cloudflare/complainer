@@ -30,7 +30,7 @@ func init() {
 			}
 
 			accessKey = flag.String("s3.access_key", os.Getenv("S3_ACCESS_KEY"), "access key for s3")
-			secretKey = flag.String("s3.secret_key", os.Getenv("S3_SECRET_ACCESS_KEY"), "secret key for s3")
+			secretKey = flag.String("s3.secret_key", os.Getenv("S3_SECRET_KEY"), "secret key for s3")
 			endpoint = flag.String("s3.endpoint", os.Getenv("S3_ENDPOINT"), "s3 endpoint (ex: https://s3-eu-central-1.amazonaws.com)")
 			bucketEndpoint = flag.String("s3.bucket_endpoint", os.Getenv("S3_BUCKET_ENDPOINT"), "s3 bucket endpoint (ex: https://${bucket}.my.cusom.domain)")
 			bucket = flag.String("s3.bucket", os.Getenv("S3_BUCKET"), "s3 bucket to use")
