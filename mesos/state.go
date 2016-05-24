@@ -8,16 +8,27 @@ type masterState struct {
 }
 
 type masterFramework struct {
+	Name           string       `json:"name"`
 	CompletedTasks []masterTask `json:"completed_tasks"`
 }
 
 type masterTask struct {
-	ID       string             `json:"id"`
-	Name     string             `json:"name"`
-	State    string             `json:"state"`
-	SlaveID  string             `json:"slave_id"`
-	Labels   []masterLabel      `json:"labels"`
-	Statuses []masterTaskStatus `json:"statuses"`
+	ID        string             `json:"id"`
+	Name      string             `json:"name"`
+	State     string             `json:"state"`
+	SlaveID   string             `json:"slave_id"`
+	Labels    []masterLabel      `json:"labels"`
+	Container masterContainer    `json:"container"`
+	Statuses  []masterTaskStatus `json:"statuses"`
+}
+
+type masterContainer struct {
+	Type   string       `json:"type"`
+	Docker masterDocker `json:"docker"`
+}
+
+type masterDocker struct {
+	Image string `json:"image"`
 }
 
 type masterTaskStatus struct {

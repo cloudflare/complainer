@@ -82,13 +82,15 @@ func (c *Cluster) failuresFromLeader(state *masterState) []complainer.Failure {
 			}
 
 			failures = append(failures, complainer.Failure{
-				ID:       task.ID,
-				Name:     task.Name,
-				Slave:    hosts[task.SlaveID],
-				State:    task.Statuses[len(task.Statuses)-1].State,
-				Started:  time.Unix(int64(task.Statuses[0].Timestamp), 0),
-				Finished: time.Unix(int64(task.Statuses[len(task.Statuses)-1].Timestamp), 0),
-				Labels:   labels,
+				ID:        task.ID,
+				Name:      task.Name,
+				Slave:     hosts[task.SlaveID],
+				Framework: framework.Name,
+				Image:     task.Container.Docker.Image,
+				State:     task.Statuses[len(task.Statuses)-1].State,
+				Started:   time.Unix(int64(task.Statuses[0].Timestamp), 0),
+				Finished:  time.Unix(int64(task.Statuses[len(task.Statuses)-1].Timestamp), 0),
+				Labels:    labels,
 			})
 		}
 	}

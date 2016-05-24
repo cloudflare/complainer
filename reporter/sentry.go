@@ -71,6 +71,8 @@ func (s *sentryReporter) Report(failure complainer.Failure, config ConfigProvide
 		"timings.finished": failure.Finished.Format(time.RFC3339),
 		"logs.stdout":      stdoutURL,
 		"logs.stderr":      stderrURL,
+		"framework.name":   failure.Framework,
+		"container.image":  failure.Image,
 	}
 
 	for k, v := range failure.Labels {
