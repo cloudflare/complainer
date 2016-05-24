@@ -7,13 +7,15 @@ import (
 
 // Failure represents a failed Mesos task
 type Failure struct {
-	ID       string
-	Name     string
-	Slave    string
-	State    string
-	Started  time.Time
-	Finished time.Time
-	Labels   map[string]string
+	ID        string
+	Name      string
+	Slave     string
+	Framework string
+	Image     string
+	State     string
+	Started   time.Time
+	Finished  time.Time
+	Labels    map[string]string
 }
 
 func (f Failure) String() string {
