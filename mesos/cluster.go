@@ -72,7 +72,7 @@ func (c *Cluster) failuresFromLeader(state *masterState) []complainer.Failure {
 
 	for _, framework := range state.Frameworks {
 		for _, task := range framework.CompletedTasks {
-			if task.State != "TASK_FAILED" && task.State != "TASK_KILLED" {
+			if task.State != "TASK_FAILED" && task.State != "TASK_ERROR" && task.State != "TASK_LOST" {
 				continue
 			}
 
