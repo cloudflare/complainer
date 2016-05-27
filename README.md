@@ -129,7 +129,7 @@ Set of labels would look like this:
 * `complainer_hipchat_instance_myapp_token: XYZ`- setting token for `myapp`.
 * `complainer_external_sentry_dsn: FOO` - for external Sentry.
 
-Internal and external complainers could have different upload services.
+Internal and external complainers can have different upload services.
 
 ## Copyright
 
