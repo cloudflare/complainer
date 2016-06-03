@@ -85,7 +85,10 @@ func (s *sentryReporter) Report(failure complainer.Failure, config ConfigProvide
 		Message: fmt.Sprintf("Task %s died with status %s", failure.Name, failure.State),
 
 		Tags: raven.Tags{
-			{"task_state", failure.State},
+			{
+				Key:   "task_state",
+				Value: failure.State,
+			},
 		},
 
 		Extra: extra,
