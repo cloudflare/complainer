@@ -14,6 +14,22 @@ Supported reporting services:
 * [Sentry](https://getsentry.com/) - a great crash reporting sofrware.
 * [Hipchat](https://www.hipchat.com/) - not so great communication platform.
 
+## Quick start
+
+Start sending all failures to Sentry:
+
+```
+docker run -it --rm cloudflare/complainer:1.0 \
+  -masters=http://mesos.master:5050 \
+  -uploader=noop \
+  -reporters=sentry \
+  -sentry.dsn=https://foo:bar@sentry.dsn.here/8
+```
+
+Run this on Mesos itself!
+
+![Sentry screenshot](screenshots/sentry.png)
+
 ## Reporting configuration
 
 Complainer needs two command line flags to configure itself:
