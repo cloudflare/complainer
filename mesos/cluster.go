@@ -15,6 +15,10 @@ import (
 // ErrNoMesosMaster indicates that no alive mesos masters are found
 var ErrNoMesosMaster = errors.New("mesos master not found")
 
+const (
+	unknownState = "UNKNOWN"
+)
+
 // Cluster represents Mesos cluster
 type Cluster struct {
 	masters []string
@@ -81,15 +85,26 @@ func (c *Cluster) failuresFromLeader(state *masterState) []complainer.Failure {
 				labels[label.Key] = label.Value
 			}
 
+			// The following is to handle the case where mesos tasks don't have any statuses
+			var startedAt int64
+			var finishedAt int64
+			var state = unknownState
+
+			if len(task.Statuses) > 0 {
+				startedAt = int64(task.Statuses[0].Timestamp)
+				finishedAt = int64(task.Statuses[len(task.Statuses)-1].Timestamp)
+				state = task.Statuses[len(task.Statuses)-1].State
+			}
+
 			failures = append(failures, complainer.Failure{
 				ID:        task.ID,
 				Name:      task.Name,
 				Slave:     hosts[task.SlaveID],
 				Framework: framework.Name,
 				Image:     task.Container.Docker.Image,
-				State:     task.Statuses[len(task.Statuses)-1].State,
-				Started:   time.Unix(int64(task.Statuses[0].Timestamp), 0),
-				Finished:  time.Unix(int64(task.Statuses[len(task.Statuses)-1].Timestamp), 0),
+				State:     state,
+				Started:   time.Unix(startedAt, 0),
+				Finished:  time.Unix(finishedAt, 0),
 				Labels:    labels,
 			})
 		}
