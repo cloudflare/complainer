@@ -159,7 +159,6 @@ You'll need the following labels for the `default` instance:
 ```yaml
 labels:
   complainer_dogfood_sentry_dsn: sentry-dsn-here
-  complainer_dogfood_hipchat_token: hipchat-token-here
   complainer_dogfood_hipchat_room: 'hipchat-room-id-here'
 ```
 
