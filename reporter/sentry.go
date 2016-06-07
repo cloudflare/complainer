@@ -59,6 +59,10 @@ func (s *sentryReporter) Report(failure complainer.Failure, config ConfigProvide
 		dsn = s.dsn
 	}
 
+	if dsn == "" {
+		return nil
+	}
+
 	client, err := s.client(dsn)
 	if err != nil {
 		return err

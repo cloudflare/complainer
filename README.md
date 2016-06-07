@@ -19,7 +19,7 @@ Supported reporting services:
 Start sending all failures to Sentry:
 
 ```
-docker run -it --rm cloudflare/complainer:1.0 \
+docker run -it --rm cloudflare/complainer \
   -masters=http://mesos.master:5050 \
   -uploader=noop \
   -reporters=sentry \
@@ -146,6 +146,35 @@ Set of labels would look like this:
 * `complainer_external_sentry_dsn: FOO` - for external Sentry.
 
 Internal and external complainers can have different upload services.
+
+#### Dogfooding
+
+To report errors for complainer itself you need to run two instances:
+
+* `default` to monitor all other tasks.
+* `dogfood` to monitor the `default` Complainer.
+
+You'll need the following labels for the `default` instance:
+
+```yaml
+labels:
+  complainer_dogfood_sentry_dsn: sentry-dsn-here
+  complainer_dogfood_hipchat_token: hipchat-token-here
+  complainer_dogfood_hipchat_room: 'hipchat-room-id-here'
+```
+
+For the `dogfood` instance you'll need to:
+
+* Add `-name=dogfood` command line flag.
+* Skip `-sentry.dsn` command line flag.
+* Skip `-hipchat.room` command line flags.
+
+Since Complainer ignores reporters with incomplete configurations, the `dogfood`
+instance would ignore every failure except for the `default` instance failures.
+
+If the `dogfood` instance fails, `default` reports it just like any other task.
+
+If both instances fail at the same time, you get nothing.
 
 ## Copyright
 

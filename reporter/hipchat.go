@@ -96,6 +96,10 @@ func (h *hipchatReporter) Report(failure complainer.Failure, config ConfigProvid
 		room = h.room
 	}
 
+	if baseURL == "" || token == "" || room == "" {
+		return nil
+	}
+
 	client, err := h.client(baseURL, token)
 	if err != nil {
 		return err
