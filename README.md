@@ -13,6 +13,7 @@ Supported reporting services:
 
 * [Sentry](https://getsentry.com/) - a great crash reporting sofrware.
 * [Hipchat](https://www.hipchat.com/) - not so great communication platform.
+* [Slack](https://slack.com/) - another communication platform.
 
 ## Quick start
 
@@ -106,6 +107,28 @@ Labels:
 * `token` - Hipchat token to authorize requests.
 
 If label is unspecified, command line flag value is used.
+
+#### Slack
+
+Command line flags:
+
+* `slack.hook_url` - Webhook URL, needed to post something (required).
+* `slack.channel` - Channel to post into, e.g. #mesos (optional).
+* `slack.username` - Username to post with, e.g. "Mesos Cluster" (optional).
+* `slack.icon_emoji` - Icon Emoji to post with, e.g. ":mesos:" (optional).
+* `slack.icon_url` - Icon URL to post with, e.g. "http://my.com/pic.png" (optional).
+
+Labels:
+
+* `hook_url` - Webhook URL, needed to post something (required).
+* `channel` - Channel to post into, e.g. #mesos (optional).
+* `username` - Username to post with, e.g. "Mesos Cluster" (optional).
+* `icon_emoji` - Icon Emoji to post with, e.g. ":mesos:" (optional).
+* `icon_url` - Icon URL to post with, e.g. "http://my.com/avatar.png" (optional).
+
+If label is unspecified, command line flag value is used.
+
+For more details see [Slack API docs](https://api.slack.com/incoming-webhooks).
 
 ### Label configuration
 
