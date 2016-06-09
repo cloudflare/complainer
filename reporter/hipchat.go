@@ -117,7 +117,9 @@ func (h *hipchatReporter) Report(failure complainer.Failure, config ConfigProvid
 
 	if err != nil {
 		defer func() {
-			_ = resp.Body.Close()
+			if resp != nil {
+				_ = resp.Body.Close()
+			}
 		}()
 	}
 
