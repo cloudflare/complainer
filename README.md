@@ -11,7 +11,7 @@ Supported log upload services:
 
 Supported reporting services:
 
-* [Sentry](https://getsentry.com/) - a great crash reporting sofrware.
+* [Sentry](https://getsentry.com/) - a great crash reporting software.
 * [Hipchat](https://www.hipchat.com/) - not so great communication platform.
 * [Slack](https://slack.com/) - another communication platform.
 
@@ -64,7 +64,7 @@ Command line flags:
 * `s3.secret_key` - S3 secret key.
 * `s3.endpoint` - S3 endpoint (ex: `https://s3-ap-southeast-1.amazonaws.com`).
 * `s3.bucket_endpoint` - S3 bucket endpoint, might be needed for S3-compatible
-APIs (ex: `https://${bucket}.my.cusom.domain`).
+APIs (ex: `https://${bucket}.my.custom.domain`).
 * `s3.bucket` - S3 bucket name.
 * `s3.timeout` - Timeout for signed S3 URLs (ex: `72h`).
 
@@ -78,7 +78,7 @@ Flags override env variables if both are supplied.
 ### Reporting services
 
 Reporting services are specified by command line flag `reporters`. Several
-services can be speficied, separated by comma.
+services can be specified, separated by comma.
 
 #### Sentry
 
