@@ -17,7 +17,7 @@ import (
 func main() {
 	name := flag.String("name", monitor.DefaultName, "complainer name to use (default is implicit)")
 	u := flag.String("uploader", "", "uploader to use (example: s3)")
-	r := flag.String("reporters", "", "reporters to use (example: sentry,hipchat,slack)")
+	r := flag.String("reporters", "", "reporters to use (example: sentry,hipchat,slack,file)")
 	masters := flag.String("masters", "", "list of master urls: http://host:port,http://host:port")
 
 	uploader.RegisterFlags()
