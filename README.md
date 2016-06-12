@@ -14,6 +14,7 @@ Supported reporting services:
 * [Sentry](https://getsentry.com/) - a great crash reporting software.
 * [Hipchat](https://www.hipchat.com/) - not so great communication platform.
 * [Slack](https://slack.com/) - another communication platform.
+* File - regular file stream output, including stdout/stderr.
 
 ## Quick start
 
@@ -129,6 +130,24 @@ Labels:
 If label is unspecified, command line flag value is used.
 
 For more details see [Slack API docs](https://api.slack.com/incoming-webhooks).
+
+#### File
+
+Command line flags:
+
+* `file.name` - File name to output logs.
+* `file.template` - Template to use in output logs.
+
+Templates are based on [`text/template`](https://golang.org/pkg/text/template/).
+The following fileds are available:
+
+* `failure` - Failure struct.
+* `stdoutURL` - URL of the stdout stream.
+* `stderrURL` - URL of the stderr stream.
+
+`Failure` struct fields can be found on godoc.org:
+
+* https://godoc.org/github.com/cloudflare/complainer#Failure
 
 ### Label configuration
 
