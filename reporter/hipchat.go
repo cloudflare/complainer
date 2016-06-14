@@ -3,7 +3,6 @@ package reporter
 import (
 	"errors"
 	"flag"
-	"fmt"
 	"net/url"
 	"os"
 
@@ -16,6 +15,7 @@ func init() {
 		baseURL *string
 		token   *string
 		room    *string
+		format  *string
 	)
 
 	registerMaker("hipchat", Maker{
@@ -28,10 +28,11 @@ func init() {
 			baseURL = flag.String("hipchat.base_url", defaultBaseURL, "default hipchat base url")
 			token = flag.String("hipchat.token", os.Getenv("HIPCHAT_TOKEN"), "default hipchat token")
 			room = flag.String("hipchat.room", os.Getenv("HIPCHAT_ROOM"), "default hipchat room")
+			format = flag.String("hipchat.format", "Task {{ .failure.Name }} ({{ .failure.ID }}) died with status {{ .failure.State }} [<a href=\"{{ .stdoutURL }}\">stdout</a>, <a href=\"{{ .stderrURL }}\">stderr</a>]", "log format")
 		},
 
 		Make: func() (Reporter, error) {
-			return newHipchatReporter(*baseURL, *token, *room), nil
+			return newHipchatReporter(*baseURL, *token, *room, *format), nil
 		},
 	})
 }
@@ -40,9 +41,10 @@ type hipchatReporter struct {
 	identity hipchatClientIdentity
 	room     string
 	clients  map[hipchatClientIdentity]*hipchat.Client
+	format   string
 }
 
-func newHipchatReporter(baseURL, token, room string) *hipchatReporter {
+func newHipchatReporter(baseURL, token, room, format string) *hipchatReporter {
 	return &hipchatReporter{
 		identity: hipchatClientIdentity{
 			baseURL: baseURL,
@@ -50,6 +52,7 @@ func newHipchatReporter(baseURL, token, room string) *hipchatReporter {
 		},
 		room:    room,
 		clients: map[hipchatClientIdentity]*hipchat.Client{},
+		format:  format,
 	}
 }
 
@@ -105,14 +108,16 @@ func (h *hipchatReporter) Report(failure complainer.Failure, config ConfigProvid
 		return err
 	}
 
+	message, err := fillTemplate(failure, config, stdoutURL, stderrURL, h.format)
+	if err != nil {
+		return err
+	}
+
 	resp, err := client.Room.Notification(room, &hipchat.NotificationRequest{
 		MessageFormat: "html",
 		Color:         "red",
 		Notify:        true,
-		Message: fmt.Sprintf(
-			"Task %s (%s) died with status %s [<a href=%q>stdout</a>, <a href=%q>stderr</a>]",
-			failure.Name, failure.Slave, failure.State, stdoutURL, stderrURL,
-		),
+		Message:       message,
 	})
 
 	if err != nil {

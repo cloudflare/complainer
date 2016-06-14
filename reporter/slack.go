@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"flag"
-	"fmt"
 	"net/http"
 	"net/url"
 	"os"
@@ -19,6 +18,7 @@ func init() {
 		channel   *string
 		iconEmoji *string
 		iconURL   *string
+		format    *string
 	)
 
 	registerMaker("slack", Maker{
@@ -28,10 +28,11 @@ func init() {
 			channel = flag.String("slack.channel", os.Getenv("SLACK_CHANNEL"), "default slack channel")
 			iconEmoji = flag.String("slack.icon_emoji", os.Getenv("SLACK_ICON_EMOJI"), "default slack user icon emoji")
 			iconURL = flag.String("slack.icon_url", os.Getenv("SLACK_ICON_URL"), "default slack user icon url")
+			format = flag.String("slack.format", "Task {{ .failure.Name }} ({{ .failure.ID }}) died with status {{ .failure.State }} [<{{ .stdoutURL }}|stdout>, <{{ .stderrURL }}|stderr>]", "log format")
 		},
 
 		Make: func() (Reporter, error) {
-			return newSlackReporter(*hookURL, *username, *channel, *iconEmoji, *iconURL)
+			return newSlackReporter(*hookURL, *username, *channel, *iconEmoji, *iconURL, *format)
 		},
 	})
 }
@@ -42,6 +43,7 @@ type slackReporter struct {
 	username  string
 	iconEmoji string
 	iconURL   string
+	format    string
 }
 
 type slackMessage struct {
@@ -52,7 +54,7 @@ type slackMessage struct {
 	IconURL   string `json:"icon_url"`
 }
 
-func newSlackReporter(hookURL, username, channel, iconEmoji, iconURL string) (*slackReporter, error) {
+func newSlackReporter(hookURL, username, channel, iconEmoji, iconURL, format string) (*slackReporter, error) {
 	u, err := url.Parse(hookURL)
 	if err != nil {
 		return nil, err
@@ -64,17 +66,20 @@ func newSlackReporter(hookURL, username, channel, iconEmoji, iconURL string) (*s
 		channel:   channel,
 		iconEmoji: iconEmoji,
 		iconURL:   iconURL,
+		format:    format,
 	}, nil
 }
 
 func (s *slackReporter) Report(failure complainer.Failure, config ConfigProvider, stdoutURL string, stderrURL string) error {
-	m := &slackMessage{
-		Text: fmt.Sprintf(
-			"Task %s (%s) died with status %s [<%s|stdout>, <%s|stderr>]",
-			failure.Name, failure.Slave, failure.State, stdoutURL, stderrURL,
-		),
+	text, err := fillTemplate(failure, config, "http://p.ya.ru", "http://google.com/", s.format)
+	if err != nil {
+		return err
 	}
-	var err error
+
+	m := &slackMessage{
+		Text: text,
+	}
+
 	var hookURL *url.URL
 	if u := config("hook_url"); len(u) > 0 {
 		hookURL, err = url.Parse(u)

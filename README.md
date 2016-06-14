@@ -168,9 +168,7 @@ The following fileds are available:
 * `stdoutURL` - URL of the stdout stream.
 * `stderrURL` - URL of the stderr stream.
 
-`Failure` struct fields can be found on godoc.org:
 
-* https://godoc.org/github.com/cloudflare/complainer#Failure
 
 ### Label configuration
 
@@ -211,6 +209,30 @@ Set of labels would look like this:
 * `complainer_external_sentry_dsn: FOO` - for external Sentry.
 
 Internal and external complainers can have different upload services.
+
+#### Templating
+
+Templates are based on [`text/template`](https://golang.org/pkg/text/template/).
+The following fields are available:
+
+* `nl` - Newline symbol (`\n`).
+* `config` - Function to get labels for the reporter.
+* `failure` - Failure struct: https://godoc.org/github.com/cloudflare/complainer#Failure
+* `stdoutURL` - URL of the stdout stream.
+* `stderrURL` - URL of the stderr stream.
+
+With `config` you can use labels in templates. For example, the following
+template for the Slack reporter:
+
+```
+Task {{ .failure.Name }} ({{ .failure.ID }}) died | {{ config "mentions" }}{{ .nl }}
+```
+
+With the label `complainer_slack_mentions=@devs` will be evaluated to:
+
+```
+Task foo.bar (bar.foo.123) died | @devs
+```
 
 #### Dogfooding
 
