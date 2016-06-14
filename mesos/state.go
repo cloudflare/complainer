@@ -53,6 +53,7 @@ type slaveState struct {
 
 type slaveFramework struct {
 	CompletedExecutors []slaveExecutor `json:"completed_executors"`
+	Executors          []slaveExecutor `json:"executors"`
 }
 
 type slaveExecutor struct {

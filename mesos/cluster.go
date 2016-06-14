@@ -121,7 +121,9 @@ func (c *Cluster) Logs(failure complainer.Failure) (stdoutURL, stderrURL string,
 	}
 
 	for _, framework := range append(state.Frameworks, state.CompletedFrameworks...) {
-		for _, executor := range framework.CompletedExecutors {
+		// Tasks are not necessarily promoted to completed immediately,
+		// that's why we need to look at current executors too.
+		for _, executor := range append(framework.Executors, framework.CompletedExecutors...) {
 			if executor.ID == failure.ID {
 				stdoutURL = sandboxURL(failure.Slave, executor.Directory, "stdout")
 				stderrURL = sandboxURL(failure.Slave, executor.Directory, "stderr")
