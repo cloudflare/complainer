@@ -1,9 +1,8 @@
 package uploader
 
 import (
-	"flag"
+	"errors"
 	"fmt"
-	"os"
 	"path"
 	"time"
 
@@ -14,31 +13,24 @@ import (
 
 func init() {
 	var (
-		accessKey      *string
-		secretKey      *string
-		endpoint       *string
-		bucketEndpoint *string
-		bucket         *string
-		timeout        *time.Duration
+		accessKey *string
+		secretKey *string
+		endpoint  *string
+		bucket    *string
+		timeout   *time.Duration
 	)
 
 	registerMaker("s3", Maker{
 		RegisterFlags: func() {
-			defaultTimeout := time.Hour * 24 * 30
-			if os.Getenv("S3_TIMEOUT") != "" {
-				defaultTimeout, _ = time.ParseDuration(os.Getenv("S3_TIMEOUT"))
-			}
-
-			accessKey = flag.String("s3.access_key", os.Getenv("S3_ACCESS_KEY"), "access key for s3")
-			secretKey = flag.String("s3.secret_key", os.Getenv("S3_SECRET_KEY"), "secret key for s3")
-			endpoint = flag.String("s3.endpoint", os.Getenv("S3_ENDPOINT"), "s3 endpoint (ex: https://s3-eu-central-1.amazonaws.com)")
-			bucketEndpoint = flag.String("s3.bucket_endpoint", os.Getenv("S3_BUCKET_ENDPOINT"), "s3 bucket endpoint (ex: https://${bucket}.my.cusom.domain)")
-			bucket = flag.String("s3.bucket", os.Getenv("S3_BUCKET"), "s3 bucket to use")
-			timeout = flag.Duration("s3.timeout", defaultTimeout, "timeout for signed s3 urls") // TODO: infinite?
+			accessKey = s3StringFlag("s3goamz.access_key", "S3_ACCESS_KEY", "access key for s3")
+			secretKey = s3StringFlag("s3goamz.secret_key", "S3_SECRET_KEY", "secret key for s3")
+			endpoint = s3StringFlag("s3goamz.endpoint", "S3_ENDPOINT", "s3 endpoint (ex: https://complainer.s3.example.com)")
+			bucket = s3StringFlag("s3goamz.bucket", "S3_BUCKET", "s3 bucket to use")
+			timeout = s3TimeoutFlag("s3goamz.timeout")
 		},
 
 		Make: func() (Uploader, error) {
-			return newS3Uploader(*accessKey, *secretKey, *endpoint, *bucketEndpoint, *bucket, *timeout)
+			return newS3Uploader(*accessKey, *secretKey, *endpoint, *bucket, *timeout)
 		},
 	})
 }
@@ -48,15 +40,18 @@ type s3Uploader struct {
 	timeout time.Duration
 }
 
-func newS3Uploader(accessKey, secretKey, endpoint, bucketEndpoint, bucket string, timeout time.Duration) (*s3Uploader, error) {
+func newS3Uploader(accessKey, secretKey, endpoint, bucket string, timeout time.Duration) (*s3Uploader, error) {
+	if accessKey == "" || secretKey == "" || endpoint == "" || bucket == "" {
+		return nil, errors.New("s3 configuration is incomplete")
+	}
+
 	auth, err := aws.GetAuth(accessKey, secretKey, "", time.Time{})
 	if err != nil {
 		return nil, err
 	}
 
 	region := aws.Region{
-		S3Endpoint:       endpoint,
-		S3BucketEndpoint: bucketEndpoint, // TODO: simplify/remove?
+		S3BucketEndpoint: endpoint,
 	}
 
 	return &s3Uploader{

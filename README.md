@@ -50,9 +50,11 @@ Uploader name: `noop`
 
 No-op uploader just echoes Mesos slave sandbox URLs.
 
-#### S3
+#### S3 AWS
 
-Uploader name: `s3`.
+Uploader name: `s3aws`.
+
+This uploader uses official AWS SDK and should be used if you use AWS.
 
 Stdout and stderr logs get uploaded to S3 and signed URLs provided to reporters.
 Logs are uploaded into the following directory structure:
@@ -61,18 +63,39 @@ Logs are uploaded into the following directory structure:
 
 Command line flags:
 
-* `s3.access_key` - S3 access key.
-* `s3.secret_key` - S3 secret key.
-* `s3.endpoint` - S3 endpoint (ex: `https://s3-ap-southeast-1.amazonaws.com`).
-* `s3.bucket_endpoint` - S3 bucket endpoint, might be needed for S3-compatible
-APIs (ex: `https://${bucket}.my.custom.domain`).
-* `s3.bucket` - S3 bucket name.
-* `s3.timeout` - Timeout for signed S3 URLs (ex: `72h`).
+* `s3aws.access_key` - S3 access key.
+* `s3aws.secret_key` - S3 secret key.
+* `s3aws.region` - S3 region.
+* `s3aws.bucket` - S3 bucket name.
+* `s3aws.timeout` - Timeout for signed S3 URLs (ex: `72h`).
 
-You can set value of any command line flag via environment variable, just
-replace dots with underscores and capitalise letters. Example:
+You can set value of any command line flag via environment variable. Example:
 
-* Flag `s3.access_key` becomes env variable `S3_ACCESS_KEY`
+* Flag `s3aws.access_key` becomes env variable `S3_ACCESS_KEY`
+
+Flags override env variables if both are supplied.
+
+##### S3 Compatible APIs
+
+Uploader name: `s3goamz`.
+
+This uploader uses goamz package and supports S3 compatible APIs that use
+v2 style signatures. This includes Ceph Rados Gateway.
+
+Stdout and stderr logs get uploaded to S3 and signed URLs provided to reporters.
+Logs are uploaded into the following directory structure:
+
+* `complainer/${task_name}/${YYYY-MM-DDTHH:mm:ssZ}-${task_id}/{stdout,stderr}`
+
+* `s3goamz.access_key` - S3 access key.
+* `s3goamz.secret_key` - S3 secret key.
+* `s3goamz.endpoint` - S3 endpoint (ex: `https://complainer.s3.example.com`).
+* `s3goamz.bucket` - S3 bucket name.
+* `s3goamz.timeout` - Timeout for signed S3 URLs (ex: `72h`).
+
+You can set value of any command line flag via environment variable. Example:
+
+* Flag `s3goamz.access_key` becomes env variable `S3_ACCESS_KEY`
 
 Flags override env variables if both are supplied.
 
