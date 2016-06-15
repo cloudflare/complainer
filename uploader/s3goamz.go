@@ -20,7 +20,7 @@ func init() {
 		timeout   *time.Duration
 	)
 
-	registerMaker("s3", Maker{
+	registerMaker("s3goamz", Maker{
 		RegisterFlags: func() {
 			accessKey = s3StringFlag("s3goamz.access_key", "S3_ACCESS_KEY", "access key for s3")
 			secretKey = s3StringFlag("s3goamz.secret_key", "S3_SECRET_KEY", "secret key for s3")
