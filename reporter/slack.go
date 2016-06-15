@@ -71,7 +71,7 @@ func newSlackReporter(hookURL, username, channel, iconEmoji, iconURL, format str
 }
 
 func (s *slackReporter) Report(failure complainer.Failure, config ConfigProvider, stdoutURL string, stderrURL string) error {
-	text, err := fillTemplate(failure, config, "http://p.ya.ru", "http://google.com/", s.format)
+	text, err := fillTemplate(failure, config, stdoutURL, stderrURL, s.format)
 	if err != nil {
 		return err
 	}
