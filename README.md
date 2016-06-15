@@ -75,6 +75,8 @@ You can set value of any command line flag via environment variable. Example:
 
 Flags override env variables if both are supplied.
 
+**AWS Policies**: The minimum AWS policy for *complainer* is a *[s3:PutObject](https://docs.aws.amazon.com/AmazonS3/latest/dev/using-with-s3-actions.html)* on the related bucket.
+
 ##### S3 Compatible APIs
 
 Uploader name: `s3goamz`.
