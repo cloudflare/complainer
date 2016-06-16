@@ -49,7 +49,7 @@ func main() {
 
 	masterList, err := cleanupURLList(strings.Split(*masters, ","))
 	if err != nil {
-		log.Fatalf("One of your entered Mesos master can`t be parsed as a URL: %s", err)
+		log.Fatalf("One of your entered Mesos master can't be parsed as a URL: %s", err)
 
 	} else if len(masterList) == 0 {
 		log.Fatal("After URL cleanup, there is no Mesos master left over. Please check -masters argument")
@@ -100,7 +100,13 @@ func cleanupURLList(urls []string) ([]string, error) {
 	var u *url.URL
 
 	for _, singleURL := range urls {
-		u, err = url.Parse(singleURL)
+		trimmedURL := strings.TrimSpace(singleURL)
+		// Skip empty URLs
+		if len(trimmedURL) == 0 {
+			continue
+		}
+
+		u, err = url.Parse(trimmedURL)
 		// If we have an error during url parsing
 		// we just skip this url, because this
 		// url won`t be callable anyway
@@ -108,10 +114,7 @@ func cleanupURLList(urls []string) ([]string, error) {
 			continue
 		}
 
-		s := u.String()
-		if strings.HasSuffix(s, "/") {
-			s = s[0 : len(s)-1]
-		}
+		s := strings.TrimSuffix(u.String(), "/")
 		clean = append(clean, s)
 	}
 
