@@ -39,10 +39,16 @@ Complainer needs two command line flags to configure itself:
 * `name` - Complainer instance name (default is `default`).
 * `masters` - Mesos master URL list (ex: `http://host:port,http://host:port`).
 
+These settings can be applied by env vars as well:
+
+* `COMPLAINER_NAME` - Complainer instance name (default is `default`).
+* `COMPLAINER_MASTERS` - Mesos master URL list (ex: `http://host:port,http://host:port`).
+
 ### Log upload services
 
-Log upload service is specified by command line flag `uploader`. Only one
-uploader can be specified per complainer instance.
+Log upload service is specified by command line flag `uploader`.
+Alternatively you can specify this by env var `COMPLAINER_UPLOADER`.
+Only one uploader can be specified per complainer instance.
 
 #### no-op
 
@@ -103,8 +109,9 @@ Flags override env variables if both are supplied.
 
 ### Reporting services
 
-Reporting services are specified by command line flag `reporters`. Several
-services can be specified, separated by comma.
+Reporting services are specified by command line flag `reporters`.
+Alternatively you can specify this by env var `COMPLAINER_REPORTERS`.
+Several services can be specified, separated by comma.
 
 #### Sentry
 
