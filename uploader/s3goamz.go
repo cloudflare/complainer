@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/cloudflare/complainer"
+	"github.com/cloudflare/complainer/flags"
 	"github.com/goamz/goamz/aws"
 	"github.com/goamz/goamz/s3"
 )
@@ -22,11 +23,11 @@ func init() {
 
 	registerMaker("s3goamz", Maker{
 		RegisterFlags: func() {
-			accessKey = s3StringFlag("s3goamz.access_key", "S3_ACCESS_KEY", "access key for s3")
-			secretKey = s3StringFlag("s3goamz.secret_key", "S3_SECRET_KEY", "secret key for s3")
-			endpoint = s3StringFlag("s3goamz.endpoint", "S3_ENDPOINT", "s3 endpoint (ex: https://complainer.s3.example.com)")
-			bucket = s3StringFlag("s3goamz.bucket", "S3_BUCKET", "s3 bucket to use")
-			timeout = s3TimeoutFlag("s3goamz.timeout")
+			accessKey = flags.String("s3goamz.access_key", "S3_ACCESS_KEY", "", "access key for s3")
+			secretKey = flags.String("s3goamz.secret_key", "S3_SECRET_KEY", "", "secret key for s3")
+			endpoint = flags.String("s3goamz.endpoint", "S3_ENDPOINT", "", "s3 endpoint (ex: https://complainer.s3.example.com)")
+			bucket = flags.String("s3goamz.bucket", "S3_BUCKET", "", "s3 bucket to use")
+			timeout = flags.Duration("s3goamz.timeout", "S3_TIMEOUT", time.Hour*24*7, "timeout for signed s3 urls")
 		},
 
 		Make: func() (Uploader, error) {
