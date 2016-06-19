@@ -2,11 +2,10 @@ package reporter
 
 import (
 	"errors"
-	"flag"
 	"net/url"
-	"os"
 
 	"github.com/cloudflare/complainer"
+	"github.com/cloudflare/complainer/flags"
 	"github.com/tbruyelle/hipchat-go/hipchat"
 )
 
@@ -20,15 +19,10 @@ func init() {
 
 	registerMaker("hipchat", Maker{
 		RegisterFlags: func() {
-			defaultBaseURL := "https://api.hipchat.com/v2/"
-			if os.Getenv("HIPCHAT_BASE_URL") != "" {
-				defaultBaseURL = os.Getenv("HIPCHAT_BASE_URL")
-			}
-
-			baseURL = flag.String("hipchat.base_url", defaultBaseURL, "default hipchat base url")
-			token = flag.String("hipchat.token", os.Getenv("HIPCHAT_TOKEN"), "default hipchat token")
-			room = flag.String("hipchat.room", os.Getenv("HIPCHAT_ROOM"), "default hipchat room")
-			format = flag.String("hipchat.format", "Task {{ .failure.Name }} ({{ .failure.ID }}) died with status {{ .failure.State }} [<a href=\"{{ .stdoutURL }}\">stdout</a>, <a href=\"{{ .stderrURL }}\">stderr</a>]", "log format")
+			baseURL = flags.String("hipchat.base_url", "HIPCHAT_BASE_URL", "https://api.hipchat.com/v2/", "default hipchat base url")
+			token = flags.String("hipchat.token", "HIPCHAT_TOKEN", "", "default hipchat token")
+			room = flags.String("hipchat.room", "HIPCHAT_ROOM", "", "default hipchat room")
+			format = flags.String("hipchat.format", "HIPCHAT_FORMAT", "Task {{ .failure.Name }} ({{ .failure.ID }}) died with status {{ .failure.State }} [<a href=\"{{ .stdoutURL }}\">stdout</a>, <a href=\"{{ .stderrURL }}\">stderr</a>]", "log format")
 		},
 
 		Make: func() (Reporter, error) {

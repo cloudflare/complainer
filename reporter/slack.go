@@ -3,12 +3,11 @@ package reporter
 import (
 	"bytes"
 	"encoding/json"
-	"flag"
 	"net/http"
 	"net/url"
-	"os"
 
 	"github.com/cloudflare/complainer"
+	"github.com/cloudflare/complainer/flags"
 )
 
 func init() {
@@ -23,12 +22,12 @@ func init() {
 
 	registerMaker("slack", Maker{
 		RegisterFlags: func() {
-			hookURL = flag.String("slack.hook_url", os.Getenv("SLACK_HOOK_URL"), "default slack webhook url")
-			username = flag.String("slack.username", os.Getenv("SLACK_USERNAME"), "default slack username")
-			channel = flag.String("slack.channel", os.Getenv("SLACK_CHANNEL"), "default slack channel")
-			iconEmoji = flag.String("slack.icon_emoji", os.Getenv("SLACK_ICON_EMOJI"), "default slack user icon emoji")
-			iconURL = flag.String("slack.icon_url", os.Getenv("SLACK_ICON_URL"), "default slack user icon url")
-			format = flag.String("slack.format", "Task {{ .failure.Name }} ({{ .failure.ID }}) died with status {{ .failure.State }} [<{{ .stdoutURL }}|stdout>, <{{ .stderrURL }}|stderr>]", "log format")
+			hookURL = flags.String("slack.hook_url", "SLACK_HOOK_URL", "", "default slack webhook url")
+			username = flags.String("slack.username", "SLACK_USERNAME", "", "default slack username")
+			channel = flags.String("slack.channel", "SLACK_CHANNEL", "", "default slack channel")
+			iconEmoji = flags.String("slack.icon_emoji", "SLACK_ICON_EMOJI", "", "default slack user icon emoji")
+			iconURL = flags.String("slack.icon_url", "SLACK_ICON_URL", "", "default slack user icon url")
+			format = flags.String("slack.format", "SLACK_FORMAT", "Task {{ .failure.Name }} ({{ .failure.ID }}) died with status {{ .failure.State }} [<{{ .stdoutURL }}|stdout>, <{{ .stderrURL }}|stderr>]", "log format")
 		},
 
 		Make: func() (Reporter, error) {

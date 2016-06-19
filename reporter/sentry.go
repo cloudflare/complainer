@@ -1,12 +1,11 @@
 package reporter
 
 import (
-	"flag"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/cloudflare/complainer"
+	"github.com/cloudflare/complainer/flags"
 	"github.com/getsentry/raven-go"
 )
 
@@ -17,7 +16,7 @@ func init() {
 
 	registerMaker("sentry", Maker{
 		RegisterFlags: func() {
-			dsn = flag.String("sentry.dsn", os.Getenv("SENTRY_DSN"), "sentry dsn")
+			dsn = flags.String("sentry.dsn", "SENTRY_DSN", "", "sentry dsn")
 		},
 
 		Make: func() (Reporter, error) {

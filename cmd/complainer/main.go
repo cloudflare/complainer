@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cloudflare/complainer/flags"
 	"github.com/cloudflare/complainer/mesos"
 	"github.com/cloudflare/complainer/monitor"
 	"github.com/cloudflare/complainer/reporter"
@@ -15,10 +16,10 @@ import (
 )
 
 func main() {
-	name := flag.String("name", envOrDefault("COMPLAINER_NAME", monitor.DefaultName), "complainer name to use (default is implicit)")
-	u := flag.String("uploader", envOrDefault("COMPLAINER_UPLOADER", ""), "uploader to use (example: s3aws,s3goamz,noop)")
-	r := flag.String("reporters", envOrDefault("COMPLAINER_REPORTERS", ""), "reporters to use (example: sentry,hipchat,slack,file)")
-	masters := flag.String("masters", envOrDefault("COMPLAINER_MASTERS", ""), "list of master urls: http://host:port,http://host:port")
+	name := flags.String("name", "COMPLAINER_NAME", monitor.DefaultName, "complainer name to use (default is implicit)")
+	u := flags.String("uploader", "COMPLAINER_UPLOADER", "", "uploader to use (example: s3aws,s3goamz,noop)")
+	r := flags.String("reporters", "COMPLAINER_REPORTERS", "", "reporters to use (example: sentry,hipchat,slack,file)")
+	masters := flags.String("masters", "COMPLAINER_MASTERS", "", "list of master urls: http://host:port,http://host:port")
 
 	uploader.RegisterFlags()
 	reporter.RegisterFlags()
@@ -58,16 +59,6 @@ func main() {
 
 		time.Sleep(time.Second * 5)
 	}
-}
-
-// envOrDefault will return the value of env var key if set.
-// If not value is returned
-func envOrDefault(key, value string) string {
-	if v := os.Getenv(key); len(v) > 0 {
-		return v
-	}
-
-	return value
 }
 
 func makeReporters(requested string) (map[string]reporter.Reporter, error) {

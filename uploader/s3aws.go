@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/cloudflare/complainer"
+	"github.com/cloudflare/complainer/flags"
 )
 
 func init() {
@@ -25,11 +26,11 @@ func init() {
 
 	registerMaker("s3aws", Maker{
 		RegisterFlags: func() {
-			accessKey = s3StringFlag("s3aws.access_key", "S3_ACCESS_KEY", "access key for s3")
-			secretKey = s3StringFlag("s3aws.secret_key", "S3_SECRET_KEY", "secret key for s3")
-			region = s3StringFlag("s3aws.region", "S3_REGION", "s3 region to use")
-			bucket = s3StringFlag("s3aws.bucket", "S3_BUCKET", "s3 bucket to use")
-			timeout = s3TimeoutFlag("s3aws.timeout")
+			accessKey = flags.String("s3aws.access_key", "S3_ACCESS_KEY", "", "access key for s3")
+			secretKey = flags.String("s3aws.secret_key", "S3_SECRET_KEY", "", "secret key for s3")
+			region = flags.String("s3aws.region", "S3_REGION", "", "s3 region to use")
+			bucket = flags.String("s3aws.bucket", "S3_BUCKET", "", "s3 bucket to use")
+			timeout = flags.Duration("s3aws.timeout", "S3_TIMEOUT", time.Hour*24*7, "timeout for signed s3 urls")
 		},
 
 		Make: func() (Uploader, error) {
