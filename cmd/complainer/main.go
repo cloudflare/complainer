@@ -47,11 +47,8 @@ func main() {
 		log.Fatalf("Cannot create requested reporters: %s", err)
 	}
 
-	masterList, err := cleanupURLList(strings.Split(*masters, ","))
-	if err != nil {
-		log.Fatalf("One of your entered Mesos master can't be parsed as a URL: %s", err)
-
-	} else if len(masterList) == 0 {
+	masterList := cleanupURLList(strings.Split(*masters, ","))
+	if len(masterList) == 0 {
 		log.Fatal("After URL cleanup, there is no Mesos master left over. Please check -masters argument")
 	}
 	cluster := mesos.NewCluster(masterList)
@@ -94,7 +91,7 @@ func makeReporters(requested string) (map[string]reporter.Reporter, error) {
 //	2. Ensures that the url has no / at the end
 // A clean list of urls and the last error (if there is one)
 // of the url.Parse action will be returned .
-func cleanupURLList(urls []string) ([]string, error) {
+func cleanupURLList(urls []string) ([]string) {
 	var clean []string
 	var err error
 	var u *url.URL
@@ -118,5 +115,5 @@ func cleanupURLList(urls []string) ([]string, error) {
 		clean = append(clean, s)
 	}
 
-	return clean, err
+	return clean
 }
