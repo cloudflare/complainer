@@ -63,9 +63,9 @@ Uploader name: `s3aws`.
 This uploader uses official AWS SDK and should be used if you use AWS.
 
 Stdout and stderr logs get uploaded to S3 and signed URLs provided to reporters.
-Logs are uploaded into the following directory structure:
+Logs are uploaded into the following directory structure by default:
 
-* `complainer/${task_name}/${YYYY-MM-DDTHH:mm:ssZ}-${task_id}/{stdout,stderr}`
+* `${YYYY-MM-DD}/complainer/${task_name}/${YYYY-MM-DDTHH:mm:ssZ}-${task_id}/{stdout,stderr}`
 
 Command line flags:
 
@@ -73,6 +73,7 @@ Command line flags:
 * `s3aws.secret_key` - S3 secret key.
 * `s3aws.region` - S3 region.
 * `s3aws.bucket` - S3 bucket name.
+* `s3aws.prefix` - S3 prefix template (`Failure` struct is available).
 * `s3aws.timeout` - Timeout for signed S3 URLs (ex: `72h`).
 
 You can set value of any command line flag via environment variable. Example:
@@ -81,7 +82,9 @@ You can set value of any command line flag via environment variable. Example:
 
 Flags override env variables if both are supplied.
 
-**AWS Policies**: The minimum AWS policy for *complainer* is a *[s3:PutObject](https://docs.aws.amazon.com/AmazonS3/latest/dev/using-with-s3-actions.html)* on the related bucket.
+The minimum AWS policy for complainer is `s3:PutObject`:
+
+* https://docs.aws.amazon.com/AmazonS3/latest/dev/using-with-s3-actions.html
 
 ##### S3 Compatible APIs
 
@@ -91,14 +94,15 @@ This uploader uses goamz package and supports S3 compatible APIs that use
 v2 style signatures. This includes Ceph Rados Gateway.
 
 Stdout and stderr logs get uploaded to S3 and signed URLs provided to reporters.
-Logs are uploaded into the following directory structure:
+Logs are uploaded into the following directory structure by default:
 
-* `complainer/${task_name}/${YYYY-MM-DDTHH:mm:ssZ}-${task_id}/{stdout,stderr}`
+* `${YYYY-MM-DD}/complainer/${task_name}/${YYYY-MM-DDTHH:mm:ssZ}-${task_id}/{stdout,stderr}`
 
 * `s3goamz.access_key` - S3 access key.
 * `s3goamz.secret_key` - S3 secret key.
 * `s3goamz.endpoint` - S3 endpoint (ex: `https://complainer.s3.example.com`).
 * `s3goamz.bucket` - S3 bucket name.
+* `s3goamz.prefix` - S3 prefix template (`Failure` struct is available).
 * `s3goamz.timeout` - Timeout for signed S3 URLs (ex: `72h`).
 
 You can set value of any command line flag via environment variable. Example:
@@ -132,6 +136,7 @@ Command line flags:
 * `hipchat.base_url` - Base Hipchat URL, needed for on-premise installations.
 * `hipchat.room` - Default Hipchat room ID to send notifications to.
 * `hipchat.token` - Default Hipchat token to authorize requests.
+* `hipchat.format` - Template to use in messages.
 
 Labels:
 
@@ -140,6 +145,13 @@ Labels:
 * `token` - Hipchat token to authorize requests.
 
 If label is unspecified, command line flag value is used.
+
+Templates are based on [`text/template`](https://golang.org/pkg/text/template/).
+The following fields are available:
+
+* `failure` - Failure struct.
+* `stdoutURL` - URL of the stdout stream.
+* `stderrURL` - URL of the stderr stream.
 
 #### Slack
 
@@ -150,6 +162,7 @@ Command line flags:
 * `slack.username` - Username to post with, e.g. "Mesos Cluster" (optional).
 * `slack.icon_emoji` - Icon Emoji to post with, e.g. ":mesos:" (optional).
 * `slack.icon_url` - Icon URL to post with, e.g. "http://my.com/pic.png" (optional).
+* `slack.format` - Template to use in messages.
 
 Labels:
 
@@ -163,21 +176,26 @@ If label is unspecified, command line flag value is used.
 
 For more details see [Slack API docs](https://api.slack.com/incoming-webhooks).
 
-#### File
-
-Command line flags:
-
-* `file.name` - File name to output logs.
-* `file.template` - Template to use in output logs.
-
 Templates are based on [`text/template`](https://golang.org/pkg/text/template/).
-The following fileds are available:
+The following fields are available:
 
 * `failure` - Failure struct.
 * `stdoutURL` - URL of the stdout stream.
 * `stderrURL` - URL of the stderr stream.
 
+#### File
 
+Command line flags:
+
+* `file.name` - File name to output logs.
+* `file.format` - Template to use in output logs.
+
+Templates are based on [`text/template`](https://golang.org/pkg/text/template/).
+The following fields are available:
+
+* `failure` - Failure struct.
+* `stdoutURL` - URL of the stdout stream.
+* `stderrURL` - URL of the stderr stream.
 
 ### Label configuration
 
