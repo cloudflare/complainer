@@ -18,8 +18,8 @@ func TestTable(t *testing.T) {
 			labels:     map[string]string{},
 
 			instances: map[string][]string{
-				"hipchat": []string{DefaultInstance},
-				"sentry":  []string{DefaultInstance},
+				"hipchat": {DefaultInstance},
+				"sentry":  {DefaultInstance},
 			},
 		},
 		{
@@ -29,8 +29,8 @@ func TestTable(t *testing.T) {
 			},
 
 			instances: map[string][]string{
-				"hipchat": []string{DefaultInstance},
-				"sentry":  []string{"woo"},
+				"hipchat": {DefaultInstance},
+				"sentry":  {"woo"},
 			},
 		},
 		{
@@ -40,8 +40,8 @@ func TestTable(t *testing.T) {
 			},
 
 			instances: map[string][]string{
-				"hipchat": []string{DefaultInstance},
-				"sentry":  []string{},
+				"hipchat": {DefaultInstance},
+				"sentry":  {},
 			},
 		},
 		{
@@ -59,23 +59,23 @@ func TestTable(t *testing.T) {
 			},
 
 			instances: map[string][]string{
-				"hipchat": []string{DefaultInstance, "sre"},
-				"sentry":  []string{DefaultInstance},
+				"hipchat": {DefaultInstance, "sre"},
+				"sentry":  {DefaultInstance},
 			},
 
 			configs: map[string]map[string]map[string]string{
-				"hipchat": map[string]map[string]string{
-					DefaultInstance: map[string]string{
+				"hipchat": {
+					DefaultInstance: {
 						"room":  "complains",
 						"token": "heya",
 					},
-					"sre": map[string]string{
+					"sre": {
 						"room":  "sre-complains",
 						"token": "sosad",
 					},
 				},
-				"sentry": map[string]map[string]string{
-					DefaultInstance: map[string]string{
+				"sentry": {
+					DefaultInstance: {
 						"dsn": "not-dsn",
 					},
 				},
