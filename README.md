@@ -38,11 +38,27 @@ Complainer needs two command line flags to configure itself:
 
 * `name` - Complainer instance name (default is `default`).
 * `masters` - Mesos master URL list (ex: `http://host:port,http://host:port`).
+* `listen` - Listen address for HTTP (ex: `127.0.0.1:8888`).
 
 These settings can be applied by env vars as well:
 
 * `COMPLAINER_NAME` - Complainer instance name (default is `default`).
 * `COMPLAINER_MASTERS` - Mesos master URL list (ex: `http://host:port,http://host:port`).
+* `COMPLAINER_LISTEN` - Listen address for HTTP (ex: `127.0.0.1:8888`).
+
+### HTTP interface
+
+Complainer provides HTTP interface. At this point the interface is only usable
+for health checks. You have to enable it with `-listen` command line flag
+or with `COMPLAINER_LISTEN` env variable.
+
+#### Health checks
+
+`/health` endpoint reports `200 OK` when things are operating mostly normally
+and `500 Internal Server Error` when complainer cannot talk to Mesos.
+
+We don't check for other issues (uploader and reporter failures) because they
+are not guaranteed to be happening continuously to recover themselves.
 
 ### Log upload services
 
