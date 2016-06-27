@@ -3,8 +3,8 @@ package uploader
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"path"
+	"text/template"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -21,6 +21,7 @@ func init() {
 		secretKey *string
 		region    *string
 		bucket    *string
+		prefix    *string
 		timeout   *time.Duration
 	)
 
@@ -30,11 +31,12 @@ func init() {
 			secretKey = flags.String("s3aws.secret_key", "S3_SECRET_KEY", "", "secret key for s3")
 			region = flags.String("s3aws.region", "S3_REGION", "", "s3 region to use")
 			bucket = flags.String("s3aws.bucket", "S3_BUCKET", "", "s3 bucket to use")
+			prefix = flags.String("s3aws.prefix", "S3_PREFIX", "complainer/{{ .failure.Finished.UTC.Format \"2006-01-02\" }}/{{ .failure.Name }}/{{ .failure.Finished.UTC.Format \"2006-01-02T15:04:05.000\" }}-{{ .failure.ID }}", "s3 path template to use")
 			timeout = flags.Duration("s3aws.timeout", "S3_TIMEOUT", time.Hour*24*7, "timeout for signed s3 urls")
 		},
 
 		Make: func() (Uploader, error) {
-			return newS3AwsUploader(*accessKey, *secretKey, *region, *bucket, *timeout)
+			return newS3AwsUploader(*accessKey, *secretKey, *region, *bucket, *prefix, *timeout)
 		},
 	})
 }
@@ -42,10 +44,11 @@ func init() {
 type s3AwsUploader struct {
 	s3      *s3.S3
 	bucket  string
+	prefix  *template.Template
 	timeout time.Duration
 }
 
-func newS3AwsUploader(accessKey, secretKey, region, bucket string, timeout time.Duration) (*s3AwsUploader, error) {
+func newS3AwsUploader(accessKey, secretKey, region, bucket, prefix string, timeout time.Duration) (*s3AwsUploader, error) {
 	if accessKey == "" || secretKey == "" || region == "" || bucket == "" {
 		return nil, errors.New("s3 configuration is incomplete")
 	}
@@ -61,7 +64,9 @@ func newS3AwsUploader(accessKey, secretKey, region, bucket string, timeout time.
 }
 
 func (u *s3AwsUploader) Upload(failure complainer.Failure, stdoutURL, stderrURL string) (string, string, error) {
-	prefix := fmt.Sprintf("complainer/%s/%s-%s", failure.Name, failure.Finished.Format(time.RFC3339), failure.ID)
+	buf := bytes.NewBuffer([]byte{})
+	err := u.prefix.Execute(buf, map[string]interface{}{"failure": failure})
+	prefix := string(buf.Bytes())
 
 	stdout, err := download(stdoutURL)
 	if err != nil {
