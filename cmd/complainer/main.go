@@ -20,6 +20,7 @@ func main() {
 	u := flags.String("uploader", "COMPLAINER_UPLOADER", "", "uploader to use (example: s3aws,s3goamz,noop)")
 	r := flags.String("reporters", "COMPLAINER_REPORTERS", "", "reporters to use (example: sentry,hipchat,slack,file)")
 	masters := flags.String("masters", "COMPLAINER_MASTERS", "", "list of master urls: http://host:port,http://host:port")
+	listen := flags.String("listen", "COMPLAINER_LISTEN", "", "http listen address")
 
 	uploader.RegisterFlags()
 	reporter.RegisterFlags()
@@ -51,10 +52,19 @@ func main() {
 
 	m := monitor.NewMonitor(*name, cluster, up, reporters)
 
+	if *listen != "" {
+		go func() {
+			log.Printf("Serving http on %s", *listen)
+			if err := m.ListenAndServe(*listen); err != nil {
+				log.Fatalf("Error serving: %s", err)
+			}
+		}()
+	}
+
 	for {
 		err := m.Run()
 		if err != nil {
-			log.Fatal(err)
+			log.Printf("Error running monitor: %s", err)
 		}
 
 		time.Sleep(time.Second * 5)
