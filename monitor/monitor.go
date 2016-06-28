@@ -3,6 +3,8 @@ package monitor
 import (
 	"fmt"
 	"log"
+	"net/http"
+	"sync"
 	"time"
 
 	"github.com/cloudflare/complainer"
@@ -26,6 +28,8 @@ type Monitor struct {
 	uploader  uploader.Uploader
 	reporters map[string]reporter.Reporter
 	recent    map[string]time.Time
+	mu        sync.Mutex
+	err       error
 }
 
 // NewMonitor creates the new monitor with a name, uploader and reporters
@@ -38,9 +42,40 @@ func NewMonitor(name string, cluster *mesos.Cluster, up uploader.Uploader, repor
 	}
 }
 
+// ListenAndServe launches an http server on the requested address.
+// The server is responsible for health checks
+func (m *Monitor) ListenAndServe(addr string) error {
+	mux := http.NewServeMux()
+
+	// health check
+	mux.HandleFunc("/health", m.handleHealthCheck)
+
+	return http.ListenAndServe(addr, mux)
+}
+
+func (m *Monitor) handleHealthCheck(w http.ResponseWriter, r *http.Request) {
+	m.mu.Lock()
+	err := m.err
+	m.mu.Unlock()
+
+	if err == nil {
+		_, _ = w.Write([]byte("I am mostly okay, thanks.\n"))
+		return
+	}
+
+	w.WriteHeader(http.StatusInternalServerError)
+	_, _ = w.Write([]byte(fmt.Sprintf("Something is fishy: %s\n", err)))
+}
+
 // Run does one run across failed tasks and reports any new failures
 func (m *Monitor) Run() error {
 	failures, err := m.mesos.Failures()
+	defer func() {
+		m.mu.Lock()
+		m.err = err
+		m.mu.Unlock()
+	}()
+
 	if err != nil {
 		return err
 	}
