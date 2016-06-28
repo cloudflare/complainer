@@ -48,9 +48,13 @@ These settings can be applied by env vars as well:
 
 ### HTTP interface
 
-Complainer provides HTTP interface. At this point the interface is only usable
-for health checks. You have to enable it with `-listen` command line flag
-or with `COMPLAINER_LISTEN` env variable.
+Complainer provides HTTP interface. You have to enable it with `-listen`
+command line flag or with `COMPLAINER_LISTEN` env variable.
+
+This interface is used for the following:
+
+* Health checks
+* [pprof](https://golang.org/pkg/net/http/pprof/) endpoint
 
 #### Health checks
 
@@ -59,6 +63,12 @@ and `500 Internal Server Error` when complainer cannot talk to Mesos.
 
 We don't check for other issues (uploader and reporter failures) because they
 are not guaranteed to be happening continuously to recover themselves.
+
+#### pprof endpoint
+
+`/debug/pprof` endpoint exposes the regular `net/http/pprof` interface:
+
+* https://golang.org/pkg/net/http/pprof/
 
 ### Log upload services
 
