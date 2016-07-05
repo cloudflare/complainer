@@ -37,12 +37,14 @@ Run this on Mesos itself!
 Complainer needs two command line flags to configure itself:
 
 * `name` - Complainer instance name (default is `default`).
+* `default` - Whether to use `default` instance for each reporter implicitly.
 * `masters` - Mesos master URL list (ex: `http://host:port,http://host:port`).
 * `listen` - Listen address for HTTP (ex: `127.0.0.1:8888`).
 
 These settings can be applied by env vars as well:
 
 * `COMPLAINER_NAME` - Complainer instance name (default is `default`).
+* `COMPLAINER_DEFAULT` - Whether to use `default` instance for each reporter implicitly.
 * `COMPLAINER_MASTERS` - Mesos master URL list (ex: `http://host:port,http://host:port`).
 * `COMPLAINER_LISTEN` - Listen address for HTTP (ex: `127.0.0.1:8888`).
 
@@ -263,6 +265,14 @@ Set of labels would look like this:
 
 Internal and external complainers can have different upload services.
 
+Implicit instances are different, depending on how you run Complainer.
+
+* `-default=true` (default) - `default` instance is implicit.
+* `-default=false` - no instances are configured implicitly.
+
+The latter is useful for opt-in monitoring, including monitoring of Complainer
+itself (also known as dogfooding).
+
 #### Templating
 
 Templates are based on [`text/template`](https://golang.org/pkg/text/template/).
@@ -298,18 +308,17 @@ You'll need the following labels for the `default` instance:
 
 ```yaml
 labels:
-  complainer_dogfood_sentry_dsn: sentry-dsn-here
-  complainer_dogfood_hipchat_room: 'hipchat-room-id-here'
+  complainer_dogfood_sentry_instances: default
+  complainer_dogfood_hipchat_instances: default
 ```
 
 For the `dogfood` instance you'll need to:
 
 * Add `-name=dogfood` command line flag.
-* Skip `-sentry.dsn` command line flag.
-* Skip `-hipchat.room` command line flags.
+* Add `-default=false` command line flag.
 
-Since Complainer ignores reporters with incomplete configurations, the `dogfood`
-instance would ignore every failure except for the `default` instance failures.
+Since the `dogfood` Complainer ignores apps with not configured instances,
+it will ignore every failure except for the `default` instance failures.
 
 If the `dogfood` instance fails, `default` reports it just like any other task.
 
