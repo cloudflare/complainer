@@ -17,6 +17,7 @@ import (
 
 func main() {
 	name := flags.String("name", "COMPLAINER_NAME", monitor.DefaultName, "complainer name to use (default is implicit)")
+	d := flags.Bool("default", "COMPLAINER_DEFAULT", true, "whether to use implicit default reporters")
 	u := flags.String("uploader", "COMPLAINER_UPLOADER", "", "uploader to use (example: s3aws,s3goamz,noop)")
 	r := flags.String("reporters", "COMPLAINER_REPORTERS", "", "reporters to use (example: sentry,hipchat,slack,file)")
 	masters := flags.String("masters", "COMPLAINER_MASTERS", "", "list of master urls: http://host:port,http://host:port")
@@ -50,16 +51,9 @@ func main() {
 
 	cluster := mesos.NewCluster(strings.Split(*masters, ","))
 
-	m := monitor.NewMonitor(*name, cluster, up, reporters)
+	m := monitor.NewMonitor(*name, cluster, up, reporters, *d)
 
-	if *listen != "" {
-		go func() {
-			log.Printf("Serving http on %s", *listen)
-			if err := m.ListenAndServe(*listen); err != nil {
-				log.Fatalf("Error serving: %s", err)
-			}
-		}()
-	}
+	serve(m, *listen)
 
 	for {
 		err := m.Run()
@@ -68,6 +62,21 @@ func main() {
 		}
 
 		time.Sleep(time.Second * 5)
+	}
+}
+
+func serve(m *monitor.Monitor, listen string) {
+	if listen != "" || os.Getenv("PORT") != "" {
+		if listen == "" {
+			listen = fmt.Sprintf(":%s", os.Getenv("PORT"))
+		}
+
+		go func() {
+			log.Printf("Serving http on %s", listen)
+			if err := m.ListenAndServe(listen); err != nil {
+				log.Fatalf("Error serving: %s", err)
+			}
+		}()
 	}
 }
 

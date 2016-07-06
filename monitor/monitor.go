@@ -28,18 +28,20 @@ type Monitor struct {
 	mesos     *mesos.Cluster
 	uploader  uploader.Uploader
 	reporters map[string]reporter.Reporter
+	defaults  bool
 	recent    map[string]time.Time
 	mu        sync.Mutex
 	err       error
 }
 
 // NewMonitor creates the new monitor with a name, uploader and reporters
-func NewMonitor(name string, cluster *mesos.Cluster, up uploader.Uploader, reporters map[string]reporter.Reporter) *Monitor {
+func NewMonitor(name string, cluster *mesos.Cluster, up uploader.Uploader, reporters map[string]reporter.Reporter, defaults bool) *Monitor {
 	return &Monitor{
 		name:      name,
 		mesos:     cluster,
 		uploader:  up,
 		reporters: reporters,
+		defaults:  defaults,
 	}
 }
 
@@ -134,6 +136,20 @@ func (m *Monitor) checkFailure(failure complainer.Failure, first bool) bool {
 }
 
 func (m *Monitor) processFailure(failure complainer.Failure) error {
+	labels := label.NewLabels(m.name, failure.Labels, m.defaults)
+
+	skip := true
+	for n := range m.reporters {
+		for range labels.Instances(n) {
+			skip = false
+		}
+	}
+
+	if skip {
+		log.Printf("Skipping %s", failure)
+		return nil
+	}
+
 	log.Printf("Reporting %s", failure)
 
 	stdoutURL, stderrURL, err := m.mesos.Logs(failure)
@@ -146,7 +162,6 @@ func (m *Monitor) processFailure(failure complainer.Failure) error {
 		return fmt.Errorf("cannot get stdout and stderr urls from uploader: %s", err)
 	}
 
-	labels := label.NewLabels(m.name, failure.Labels)
 	for n, r := range m.reporters {
 		for _, i := range labels.Instances(n) {
 			config := reporter.NewConfigProvider(labels, n, i)
