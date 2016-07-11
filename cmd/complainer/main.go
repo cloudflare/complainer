@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -50,11 +49,7 @@ func main() {
 		log.Fatalf("Cannot create requested reporters: %s", err)
 	}
 
-	masterList := cleanupURLList(strings.Split(*masters, ","))
-	if len(masterList) == 0 {
-		log.Fatal("After URL cleanup, there is no Mesos master left over. Please check -masters argument")
-	}
-	cluster := mesos.NewCluster(masterList)
+	cluster := mesos.NewCluster(strings.Split(*masters, ","))
 
 	m := monitor.NewMonitor(*name, cluster, up, reporters, *d)
 
@@ -103,37 +98,4 @@ func makeReporters(requested string) (map[string]reporter.Reporter, error) {
 	}
 
 	return reporters, nil
-}
-
-// cleanupURLList will clean up a list of URLs.
-// It does two things
-// 	1. Check if the url is parsable
-//	2. Ensures that the url has no / at the end
-// A clean list of urls and the last error (if there is one)
-// of the url.Parse action will be returned .
-func cleanupURLList(urls []string) ([]string) {
-	var clean []string
-	var err error
-	var u *url.URL
-
-	for _, singleURL := range urls {
-		trimmedURL := strings.TrimSpace(singleURL)
-		// Skip empty URLs
-		if len(trimmedURL) == 0 {
-			continue
-		}
-
-		u, err = url.Parse(trimmedURL)
-		// If we have an error during url parsing
-		// we just skip this url, because this
-		// url won`t be callable anyway
-		if err != nil {
-			continue
-		}
-
-		s := strings.TrimSuffix(u.String(), "/")
-		clean = append(clean, s)
-	}
-
-	return clean
 }
