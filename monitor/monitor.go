@@ -3,6 +3,9 @@ package monitor
 import (
 	"fmt"
 	"log"
+	"net/http"
+	"net/http/pprof"
+	"sync"
 	"time"
 
 	"github.com/cloudflare/complainer"
@@ -25,22 +28,64 @@ type Monitor struct {
 	mesos     *mesos.Cluster
 	uploader  uploader.Uploader
 	reporters map[string]reporter.Reporter
+	defaults  bool
 	recent    map[string]time.Time
+	mu        sync.Mutex
+	err       error
 }
 
 // NewMonitor creates the new monitor with a name, uploader and reporters
-func NewMonitor(name string, cluster *mesos.Cluster, up uploader.Uploader, reporters map[string]reporter.Reporter) *Monitor {
+func NewMonitor(name string, cluster *mesos.Cluster, up uploader.Uploader, reporters map[string]reporter.Reporter, defaults bool) *Monitor {
 	return &Monitor{
 		name:      name,
 		mesos:     cluster,
 		uploader:  up,
 		reporters: reporters,
+		defaults:  defaults,
 	}
+}
+
+// ListenAndServe launches an http server on the requested address.
+// The server is responsible for health checks
+func (m *Monitor) ListenAndServe(addr string) error {
+	mux := http.NewServeMux()
+
+	// health check
+	mux.HandleFunc("/health", m.handleHealthCheck)
+
+	// pprof
+	mux.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
+	mux.Handle("/debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
+	mux.Handle("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
+	mux.Handle("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
+	mux.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
+
+	return http.ListenAndServe(addr, mux)
+}
+
+func (m *Monitor) handleHealthCheck(w http.ResponseWriter, r *http.Request) {
+	m.mu.Lock()
+	err := m.err
+	m.mu.Unlock()
+
+	if err == nil {
+		_, _ = w.Write([]byte("I am mostly okay, thanks.\n"))
+		return
+	}
+
+	w.WriteHeader(http.StatusInternalServerError)
+	_, _ = w.Write([]byte(fmt.Sprintf("Something is fishy: %s\n", err)))
 }
 
 // Run does one run across failed tasks and reports any new failures
 func (m *Monitor) Run() error {
 	failures, err := m.mesos.Failures()
+	defer func() {
+		m.mu.Lock()
+		m.err = err
+		m.mu.Unlock()
+	}()
+
 	if err != nil {
 		return err
 	}
@@ -91,6 +136,20 @@ func (m *Monitor) checkFailure(failure complainer.Failure, first bool) bool {
 }
 
 func (m *Monitor) processFailure(failure complainer.Failure) error {
+	labels := label.NewLabels(m.name, failure.Labels, m.defaults)
+
+	skip := true
+	for n := range m.reporters {
+		for range labels.Instances(n) {
+			skip = false
+		}
+	}
+
+	if skip {
+		log.Printf("Skipping %s", failure)
+		return nil
+	}
+
 	log.Printf("Reporting %s", failure)
 
 	stdoutURL, stderrURL, err := m.mesos.Logs(failure)
@@ -103,7 +162,6 @@ func (m *Monitor) processFailure(failure complainer.Failure) error {
 		return fmt.Errorf("cannot get stdout and stderr urls from uploader: %s", err)
 	}
 
-	labels := label.NewLabels(m.name, failure.Labels)
 	for n, r := range m.reporters {
 		for _, i := range labels.Instances(n) {
 			config := reporter.NewConfigProvider(labels, n, i)

@@ -12,13 +12,15 @@ const DefaultInstance = "default"
 type Labels struct {
 	complainer string
 	labels     map[string]string
+	defaults   bool
 }
 
 // NewLabels creates labels for the specific complainer instance
-func NewLabels(complainer string, labels map[string]string) Labels {
+func NewLabels(complainer string, labels map[string]string, defaults bool) Labels {
 	return Labels{
 		complainer: complainer,
 		labels:     labels,
+		defaults:   defaults,
 	}
 }
 
@@ -39,7 +41,11 @@ func (l Labels) Instances(reporter string) []string {
 		}
 	}
 
-	return []string{DefaultInstance}
+	if l.defaults {
+		return []string{DefaultInstance}
+	}
+
+	return []string{}
 }
 
 // InstanceLabel returns label value for the specific reporter instance

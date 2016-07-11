@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cloudflare/complainer/flags"
 	"github.com/cloudflare/complainer/mesos"
 	"github.com/cloudflare/complainer/monitor"
 	"github.com/cloudflare/complainer/reporter"
@@ -16,10 +17,12 @@ import (
 )
 
 func main() {
-	name := flag.String("name", monitor.DefaultName, "complainer name to use (default is implicit)")
-	u := flag.String("uploader", "", "uploader to use (example: s3aws,s3goamz,noop)")
-	r := flag.String("reporters", "", "reporters to use (example: sentry,hipchat,slack,file)")
-	masters := flag.String("masters", "", "list of master urls: http://host:port,http://host:port")
+	name := flags.String("name", "COMPLAINER_NAME", monitor.DefaultName, "complainer name to use (default is implicit)")
+	d := flags.Bool("default", "COMPLAINER_DEFAULT", true, "whether to use implicit default reporters")
+	u := flags.String("uploader", "COMPLAINER_UPLOADER", "", "uploader to use (example: s3aws,s3goamz,noop)")
+	r := flags.String("reporters", "COMPLAINER_REPORTERS", "", "reporters to use (example: sentry,hipchat,slack,file)")
+	masters := flags.String("masters", "COMPLAINER_MASTERS", "", "list of master urls: http://host:port,http://host:port")
+	listen := flags.String("listen", "COMPLAINER_LISTEN", "", "http listen address")
 
 	uploader.RegisterFlags()
 	reporter.RegisterFlags()
@@ -53,15 +56,32 @@ func main() {
 	}
 	cluster := mesos.NewCluster(masterList)
 
-	m := monitor.NewMonitor(*name, cluster, up, reporters)
+	m := monitor.NewMonitor(*name, cluster, up, reporters, *d)
+
+	serve(m, *listen)
 
 	for {
 		err := m.Run()
 		if err != nil {
-			log.Fatal(err)
+			log.Printf("Error running monitor: %s", err)
 		}
 
 		time.Sleep(time.Second * 5)
+	}
+}
+
+func serve(m *monitor.Monitor, listen string) {
+	if listen != "" || os.Getenv("PORT") != "" {
+		if listen == "" {
+			listen = fmt.Sprintf(":%s", os.Getenv("PORT"))
+		}
+
+		go func() {
+			log.Printf("Serving http on %s", listen)
+			if err := m.ListenAndServe(listen); err != nil {
+				log.Fatalf("Error serving: %s", err)
+			}
+		}()
 	}
 }
 

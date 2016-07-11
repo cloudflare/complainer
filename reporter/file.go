@@ -1,10 +1,10 @@
 package reporter
 
 import (
-	"flag"
 	"os"
 
 	"github.com/cloudflare/complainer"
+	"github.com/cloudflare/complainer/flags"
 )
 
 func init() {
@@ -15,8 +15,8 @@ func init() {
 
 	registerMaker("file", Maker{
 		RegisterFlags: func() {
-			file = flag.String("file.name", "/dev/stderr", "file to log failures")
-			format = flag.String("file.format", "Task {{ .failure.Name }} ({{ .failure.ID }}) died with status {{ .failure.State }}:{{ .nl }}  * {{ .stdoutURL }}{{ .nl }}  * {{ .stderrURL }} ]{{ .nl }}", "log format")
+			file = flags.String("file.name", "FILE_NAME", "/dev/stderr", "file to log failures")
+			format = flags.String("file.format", "FILE_FORMAT", "Task {{ .failure.Name }} ({{ .failure.ID }}) died with status {{ .failure.State }}:{{ .nl }}  * {{ .stdoutURL }}{{ .nl }}  * {{ .stderrURL }}{{ .nl }}", "log format")
 		},
 
 		Make: func() (Reporter, error) {
