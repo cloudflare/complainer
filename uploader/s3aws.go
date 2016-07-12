@@ -53,6 +53,11 @@ func newS3AwsUploader(accessKey, secretKey, region, bucket, prefix string, timeo
 		return nil, errors.New("s3 configuration is incomplete")
 	}
 
+	tmpl, err := template.New("").Parse(prefix)
+	if err != nil {
+		return nil, err
+	}
+
 	return &s3AwsUploader{
 		s3: s3.New(session.New(&aws.Config{
 			Region:      aws.String(region),
@@ -60,6 +65,7 @@ func newS3AwsUploader(accessKey, secretKey, region, bucket, prefix string, timeo
 		})),
 		bucket:  bucket,
 		timeout: timeout,
+		prefix:  tmpl,
 	}, nil
 }
 
