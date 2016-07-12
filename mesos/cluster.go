@@ -27,8 +27,13 @@ type Cluster struct {
 
 // NewCluster creates a new cluster with the provided list of masters
 func NewCluster(masters []string) *Cluster {
+	var cleanMasters []string
+	for _, master := range masters {
+		cleanMasters = append(cleanMasters, strings.TrimSuffix(master, "/"))
+	}
+
 	return &Cluster{
-		masters: masters,
+		masters: cleanMasters,
 		client: http.Client{
 			Timeout: time.Second * 30,
 		},
