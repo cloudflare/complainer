@@ -69,12 +69,17 @@ func (m *Monitor) handleHealthCheck(w http.ResponseWriter, r *http.Request) {
 	m.mu.Unlock()
 
 	if err == nil {
-		_, _ = w.Write([]byte("I am mostly okay, thanks.\n"))
+		if _, err = w.Write([]byte("I am mostly okay, thanks.\n")); err != nil {
+			log.Printf("Error responding that we're okay: %s", err)
+		}
+
 		return
 	}
 
 	w.WriteHeader(http.StatusInternalServerError)
-	_, _ = w.Write([]byte(fmt.Sprintf("Something is fishy: %s\n", err)))
+	if _, err = w.Write([]byte(fmt.Sprintf("Something is fishy: %s\n", err))); err != nil {
+		log.Printf("Error responding that we're not okay: %s", err)
+	}
 }
 
 // Run does one run across failed tasks and reports any new failures

@@ -2,6 +2,7 @@ package flags
 
 import (
 	"flag"
+	"log"
 	"os"
 	"strconv"
 	"time"
@@ -39,7 +40,12 @@ func String(name, env, fallback, help string) *string {
 func Duration(name, env string, fallback time.Duration, help string) *time.Duration {
 	value := fallback
 	if v := os.Getenv(env); v != "" {
-		value, _ = time.ParseDuration(v)
+		vv, err := time.ParseDuration(v)
+		if err != nil {
+			log.Fatalf("Error parsing duration from env variable %s: %s", env, v)
+		}
+
+		value = vv
 	}
 
 	return flag.Duration(name, value, help)
