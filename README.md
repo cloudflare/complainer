@@ -211,6 +211,27 @@ The following fields are available:
 * `stdoutURL` - URL of the stdout stream.
 * `stderrURL` - URL of the stderr stream.
 
+### Jira
+
+Command line flags:
+
+* `jira.url` - Jira url
+* `jira.username` - Username who will create the issue (required).
+* `jira.password` - Password of the user (required).
+* `jira.issue_closed_status` - Status when an issue is considered closed
+   (required).
+* `jira.fields` - Fields to be set in format "key1**:**value1**;**...". Keys
+   are what you see in the forms and values can be templates (required). The
+   keys MUST have Project, Issue Type and Summary.
+
+Templates are based on [`text/template`](https://golang.org/pkg/text/template/).
+The following fields are available:
+
+* `failure` - Failure struct.
+* `stdoutURL` - URL of the stdout stream.
+* `stderrURL` - URL of the stderr stream.
+
+
 #### File
 
 Command line flags:
