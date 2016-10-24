@@ -2,11 +2,12 @@ package reporter
 
 import (
 	"fmt"
+	"io/ioutil"
+	"strings"
+
 	jira "github.com/andygrunwald/go-jira"
 	"github.com/cloudflare/complainer"
 	"github.com/cloudflare/complainer/flags"
-	"io/ioutil"
-	"strings"
 )
 
 // jiraReporter holds necessary information to create issues for any failures
