@@ -25,7 +25,7 @@ type Room struct {
 	ID                int            `json:"id"`
 	Links             RoomLinks      `json:"links"`
 	Name              string         `json:"name"`
-	XmppJid           string         `json:"xmpp_jid"`
+	XMPPJid           string         `json:"xmpp_jid"`
 	Statistics        RoomStatistics `json:"statistics"`
 	Created           string         `json:"created"`
 	IsArchived        bool           `json:"is_archived"`
@@ -73,7 +73,7 @@ type RoomLinks struct {
 
 // NotificationRequest represents a HipChat room notification request.
 type NotificationRequest struct {
-	Color         string `json:"color,omitempty"`
+	Color         Color  `json:"color,omitempty"`
 	Message       string `json:"message,omitempty"`
 	Notify        bool   `json:"notify,omitempty"`
 	MessageFormat string `json:"message_format,omitempty"`
@@ -195,7 +195,9 @@ type Attribute struct {
 type AttributeValue struct {
 	URL   string `json:"url,omitempty"`
 	Style string `json:"style,omitempty"`
-	Label string `json:"label"`
+	Type  string `json:"type,omitempty"`
+	Label string `json:"label,omitempty"`
+	Value string `json:"value,omitempty"`
 	Icon  *Icon  `json:"icon,omitempty"`
 }
 
@@ -241,6 +243,111 @@ type InviteRequest struct {
 	Reason string `json:"reason"`
 }
 
+// GlanceRequest represents a HipChat room ui glance
+type GlanceRequest struct {
+	Key        string             `json:"key"`
+	Name       GlanceName         `json:"name"`
+	Target     string             `json:"target"`
+	QueryURL   string             `json:"queryUrl"`
+	Icon       Icon               `json:"icon"`
+	Conditions []*GlanceCondition `json:"conditions,omitempty"`
+}
+
+// GlanceName represents a glance name
+type GlanceName struct {
+	Value string `json:"value"`
+	I18n  string `json:"i18n,omitempty"`
+}
+
+// GlanceCondition represents a condition to determine whether a glance is displayed
+type GlanceCondition struct {
+	Condition string            `json:"condition"`
+	Params    map[string]string `json:"params"`
+	Invert    bool              `json:"invert"`
+}
+
+// GlanceUpdateRequest represents a HipChat room ui glance update request
+type GlanceUpdateRequest struct {
+	Glance []*GlanceUpdate `json:"glance"`
+}
+
+// GlanceUpdate represents a component of a HipChat room ui glance update
+type GlanceUpdate struct {
+	Key     string        `json:"key"`
+	Content GlanceContent `json:"content"`
+}
+
+// GlanceContent is a component of a Glance
+type GlanceContent struct {
+	Status   GlanceStatus   `json:"status"`
+	Metadata interface{}    `json:"metadata,omitempty"`
+	Label    AttributeValue `json:"label"` // AttributeValue{Type, Label}
+}
+
+// GlanceStatus is a status field component of a GlanceContent
+type GlanceStatus struct {
+	Type  string      `json:"type"`  // "lozenge" | "icon"
+	Value interface{} `json:"value"` // AttributeValue{Type, Label} | Icon{URL, URL2x}
+}
+
+// UnmarshalJSON deserializes a JSON-serialized GlanceStatus
+func (gs *GlanceStatus) UnmarshalJSON(data []byte) error {
+	// Compact the JSON to make it easier to process below
+	buffer := bytes.NewBuffer([]byte{})
+	err := json.Compact(buffer, data)
+	if err != nil {
+		return err
+	}
+	data = buffer.Bytes()
+
+	// Since Value can be either an AttributeValue or an Icon, we
+	// must check and deserialize appropriately
+	obj := make(map[string]interface{})
+
+	err = json.Unmarshal(data, &obj)
+	if err != nil {
+		return err
+	}
+
+	for _, field := range []string{"type", "value"} {
+		if obj[field] == nil {
+			return fmt.Errorf("missing %s field", field)
+		}
+	}
+
+	gs.Type = obj["type"].(string)
+	val := obj["value"].(map[string]interface{})
+
+	valueMap := map[string][]string{
+		"lozenge": []string{"type", "label"},
+		"icon":    []string{"url", "url@2x"},
+	}
+
+	if valueMap[gs.Type] == nil {
+		return fmt.Errorf("invalid GlanceStatus type: %s", gs.Type)
+	}
+
+	for _, field := range valueMap[gs.Type] {
+		if val[field] == nil {
+			return fmt.Errorf("%s missing %s field", gs.Type, field)
+		}
+		_, ok := val[field].(string)
+		if !ok {
+			return fmt.Errorf("could not convert %s field %s to string", gs.Type, field)
+		}
+	}
+
+	// Can safely perform type coercion
+	switch gs.Type {
+	case "lozenge":
+		gs.Value = AttributeValue{Type: val["type"].(string), Label: val["label"].(string)}
+	case "icon":
+		gs.Value = Icon{URL: val["url"].(string), URL2x: val["url@2x"].(string)}
+	}
+
+	return nil
+}
+
 // AddAttribute adds an attribute to a Card
 func (c *Card) AddAttribute(mainLabel, subLabel, url, iconURL string) {
 	attr := Attribute{Label: mainLabel}
@@ -249,11 +356,23 @@ func (c *Card) AddAttribute(mainLabel, subLabel, url, iconURL string) {
 	c.Attributes = append(c.Attributes, attr)
 }
 
+// RoomsListOptions specifies the optional parameters of the RoomService.List
+// method.
+type RoomsListOptions struct {
+	ListOptions
+
+	// Include private rooms in the result, API defaults to true
+	IncludePrivate bool `url:"include-private,omitempty"`
+
+	// Include archived rooms in the result, API defaults to false
+	IncludeArchived bool `url:"include-archived,omitempty"`
+}
+
 // List returns all the rooms authorized.
 //
 // HipChat API docs: https://www.hipchat.com/docs/apiv2/method/get_all_rooms
-func (r *RoomService) List() (*Rooms, *http.Response, error) {
-	req, err := r.client.NewRequest("GET", "room", nil, nil)
+func (r *RoomService) List(opt *RoomsListOptions) (*Rooms, *http.Response, error) {
+	req, err := r.client.NewRequest("GET", "room", opt, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -392,6 +511,14 @@ type HistoryOptions struct {
 	// Reverse the output such that the oldest message is first.
 	// For consistent paging, set to 'false'.
 	Reverse bool `url:"reverse,omitempty"`
+
+	// Either the earliest date to fetch history for the ISO-8601 format string,
+	// or leave blank to disable this filter.
+	// to be effective, the API call requires Date also be filled in with an ISO-8601 format string.
+	EndDate string `url:"end-date,omitempty"`
+
+	// Include records about deleted messages into results (body of a message isn't returned).  Set to 'true'.
+	IncludeDeleted bool `url:"include_deleted,omitempty"`
 }
 
 // History fetches a room's chat history.
@@ -457,6 +584,42 @@ func (r *RoomService) Invite(room string, user string, reason string) (*http.Res
 	reasonReq := &InviteRequest{Reason: reason}
 
 	req, err := r.client.NewRequest("POST", fmt.Sprintf("room/%s/invite/%s", room, user), nil, reasonReq)
+	if err != nil {
+		return nil, err
+	}
+
+	return r.client.Do(req, nil)
+}
+
+// CreateGlance creates a glance in the room specified by the id.
+//
+// HipChat API docs: https://www.hipchat.com/docs/apiv2/method/create_room_glance
+func (r *RoomService) CreateGlance(id string, glanceReq *GlanceRequest) (*http.Response, error) {
+	req, err := r.client.NewRequest("PUT", fmt.Sprintf("room/%s/extension/glance/%s", id, glanceReq.Key), nil, glanceReq)
+	if err != nil {
+		return nil, err
+	}
+
+	return r.client.Do(req, nil)
+}
+
+// DeleteGlance deletes a glance in the room specified by the id.
+//
+// HipChat API docs: https://www.hipchat.com/docs/apiv2/method/delete_room_glance
+func (r *RoomService) DeleteGlance(id string, glanceReq *GlanceRequest) (*http.Response, error) {
+	req, err := r.client.NewRequest("DELETE", fmt.Sprintf("room/%s/extension/glance/%s", id, glanceReq.Key), nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return r.client.Do(req, nil)
+}
+
+// UpdateGlance sends a glance update to the room specified by the id.
+//
+// HipChat API docs: https://www.hipchat.com/docs/apiv2/method/room_addon_ui_update
+func (r *RoomService) UpdateGlance(id string, glanceUpdateReq *GlanceUpdateRequest) (*http.Response, error) {
+	req, err := r.client.NewRequest("POST", fmt.Sprintf("addon/ui/room/%s", id), nil, glanceUpdateReq)
 	if err != nil {
 		return nil, err
 	}

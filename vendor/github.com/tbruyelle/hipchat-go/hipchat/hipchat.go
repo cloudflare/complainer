@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/google/go-querystring/query"
 	"io"
 	"io/ioutil"
 	"mime"
@@ -19,17 +18,25 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/google/go-querystring/query"
 )
 
 const (
 	defaultBaseURL = "https://api.hipchat.com/v2/"
 )
 
+// HTTPClient is an interface that allows overriding the http behavior
+// by providing custom http clients
+type HTTPClient interface {
+	Do(req *http.Request) (res *http.Response, err error)
+}
+
 // Client manages the communication with the HipChat API.
 type Client struct {
 	authToken string
 	BaseURL   *url.URL
-	client    *http.Client
+	client    HTTPClient
 	// Room gives access to the /room part of the API.
 	Room *RoomService
 	// User gives access to the /user part of the API.
@@ -65,6 +72,25 @@ type ListOptions struct {
 	MaxResults int `url:"max-results,omitempty"`
 }
 
+// Color is set of hard-coded string values for the HipChat API for notifications.
+// cf: https://www.hipchat.com/docs/apiv2/method/send_room_notification
+type Color string
+
+const (
+	// ColorYellow is the color yellow
+	ColorYellow Color = "yellow"
+	// ColorGreen is the color green
+	ColorGreen Color = "green"
+	// ColorRed is the color red
+	ColorRed Color = "red"
+	// ColorPurple is the color purple
+	ColorPurple Color = "purple"
+	// ColorGray is the color gray
+	ColorGray Color = "gray"
+	// ColorRandom is the random "surprise me!" color
+	ColorRandom Color = "random"
+)
+
 // AuthTest can be set to true to test an auth token.
 //
 // HipChat API docs: https://www.hipchat.com/docs/apiv2/auth#auth_test
@@ -93,9 +119,12 @@ func NewClient(authToken string) *Client {
 	return c
 }
 
-// SetHTTPClient sets the HTTP client for performing API requests.
+// SetHTTPClient sets the http client for performing API requests.
+// This method allows overriding the default http client with any
+// implementation of the HTTPClient interface. It is typically used
+// to have finer control of the http request.
 // If a nil httpClient is provided, http.DefaultClient will be used.
-func (c *Client) SetHTTPClient(httpClient *http.Client) {
+func (c *Client) SetHTTPClient(httpClient HTTPClient) {
 	if httpClient == nil {
 		c.client = http.DefaultClient
 	} else {
@@ -199,7 +228,10 @@ func (c *Client) NewFileUploadRequest(method, urlStr string, v interface{}) (*ht
 		"--hipfileboundary\n"
 
 	b := &bytes.Buffer{}
-	b.Write([]byte(body))
+	_, err = b.Write([]byte(body))
+	if err != nil {
+		return nil, err
+	}
 
 	req, err := http.NewRequest(method, u.String(), b)
 	if err != nil {
@@ -234,7 +266,7 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 		if v != nil {
 			defer resp.Body.Close()
 			if w, ok := v.(io.Writer); ok {
-				io.Copy(w, resp.Body)
+				_, err = io.Copy(w, resp.Body)
 			} else {
 				err = json.NewDecoder(resp.Body).Decode(v)
 			}
