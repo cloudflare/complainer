@@ -30,11 +30,11 @@ func init() {
 
 	registerMaker("jira", Maker{
 		RegisterFlags: func() {
-			jiraURL = flags.String("jira.url", "JIRA_URL", "", "default jira instance url")
-			username = flags.String("jira.username", "JIRA_USERNAME", "", "User to authenticate to jira as")
-			password = flags.String("jira.password", "JIRA_PASSWORD", "", "Password for the user to authenticate")
-			fieldsConfiguration = flags.String("jira.fields", "JIRA_FIELDS", "", "all required fields seen in the online form in key:value format seperated by ; for multiple fields. Example - Project:ENG;Issue Type:Bug;Priority:Medium. This configuration MUST contain 'Project', 'Summary', 'Issue Type'")
-			closedStatus = flags.String("jira.issue_closed_status", "JIRA_ISSUE_CLOSED_STATUS", "", "The status of issue when it is considered closed. This is used to decide whether or not to create new ticket for the same job")
+			jiraURL = flags.String("jira.url", "JIRA_URL", "", "Default JIRA instance url")
+			username = flags.String("jira.username", "JIRA_USERNAME", "", "JIRA user to authenticate as")
+			password = flags.String("jira.password", "JIRA_PASSWORD", "", "JIRA password for the user to authenticate")
+			fieldsConfiguration = flags.String("jira.fields", "JIRA_FIELDS", "Project:COMPLAINER;Issue Type:Bug;Summary:Task {{ .failure.Name }} died with status {{ .failure.State }};Description:[stdout|{{ .stdoutURL }}], [stderr|{{ .stderrURL }}], ID={{ .failure.ID }}", "JIRA fields in 'key:value;...' format seperated by ';', this configuration MUST contain 'Project', 'Summary' and 'Issue Type'")
+			closedStatus = flags.String("jira.issue_closed_status", "JIRA_ISSUE_CLOSED_STATUS", "Closed", "The status of JIRA issue when it is considered closed")
 		},
 
 		Make: func() (Reporter, error) {

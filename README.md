@@ -215,14 +215,18 @@ The following fields are available:
 
 Command line flags:
 
-* `jira.url` - Jira url
-* `jira.username` - Username who will create the issue (required).
-* `jira.password` - Password of the user (required).
-* `jira.issue_closed_status` - Status when an issue is considered closed
-   (required).
-* `jira.fields` - Fields to be set in format "key1**:**value1**;**...". Keys
-   are what you see in the forms and values can be templates (required). The
-   keys MUST have Project, Issue Type and Summary.
+* `jira.url` - Default JIRA instance url (required).
+* `jira.username` - JIRA user to authenticate as (required).
+* `jira.password` - JIRA password for the user to authenticate (required).
+* `jira.issue_closed_status` - The status of JIRA issue when it is considered closed.
+* `jira.fields` - JIRA fields in `key:value;...` format seperated by `;`,
+   this configuration MUST contain `Project`, `Summary` and `Issue Type`.
+
+Example `jira.fields`:
+
+```
+Project:COMPLAINER;Issue Type:Bug;Summary:Task {{ .failure.Name }} died with status {{ .failure.State }};Description:[stdout|{{ .stdoutURL }}], [stderr|{{ .stderrURL }}], ID={{ .failure.ID }}
+```
 
 Templates are based on [`text/template`](https://golang.org/pkg/text/template/).
 The following fields are available:
@@ -230,7 +234,6 @@ The following fields are available:
 * `failure` - Failure struct.
 * `stdoutURL` - URL of the stdout stream.
 * `stderrURL` - URL of the stderr stream.
-
 
 #### File
 
