@@ -48,6 +48,23 @@ These settings can be applied by env vars as well:
 * `COMPLAINER_MASTERS` - Mesos master URL list (ex: `http://host:port,http://host:port`).
 * `COMPLAINER_LISTEN` - Listen address for HTTP (ex: `127.0.0.1:8888`).
 
+
+## Filtering based on the failures framework
+
+If you're in the situation where you have multiple marathons running against
+a mesos, and want to segregate out which failures go where, the following
+options are of interest. Each option can be specified multiple times.
+
+* `framework-whitelist` - This is a regex option; if given, the failures
+  framework must match at least one whitelist. If no whitelist is specified,
+  then it's treated as if '.*' had been passed- all failures are whitelisted
+  as long as they don't match a blacklist.
+* `framework-blacklist` - This is a regex option; if given, any failure that
+  matches this are ignored.
+
+Note that the order of evaluation is such that blacklists are applied first,
+then whitelists.
+
 ### HTTP interface
 
 Complainer provides HTTP interface. You have to enable it with `-listen`

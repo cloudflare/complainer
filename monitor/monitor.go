@@ -10,6 +10,7 @@ import (
 
 	"github.com/cloudflare/complainer"
 	"github.com/cloudflare/complainer/label"
+	"github.com/cloudflare/complainer/matcher"
 	"github.com/cloudflare/complainer/mesos"
 	"github.com/cloudflare/complainer/reporter"
 	"github.com/cloudflare/complainer/uploader"
@@ -27,6 +28,7 @@ type Monitor struct {
 	name      string
 	mesos     *mesos.Cluster
 	uploader  uploader.Uploader
+	matcher   matcher.FailureMatcher
 	reporters map[string]reporter.Reporter
 	defaults  bool
 	recent    map[string]time.Time
@@ -35,11 +37,16 @@ type Monitor struct {
 }
 
 // NewMonitor creates the new monitor with a name, uploader and reporters
-func NewMonitor(name string, cluster *mesos.Cluster, up uploader.Uploader, reporters map[string]reporter.Reporter, defaults bool) *Monitor {
+func NewMonitor(name string, cluster *mesos.Cluster, up uploader.Uploader, reporters map[string]reporter.Reporter, defaults bool, match matcher.FailureMatcher) *Monitor {
+	if match == nil {
+		match = &matcher.NoopMatcher{}
+	}
+
 	return &Monitor{
 		name:      name,
 		mesos:     cluster,
 		uploader:  up,
+		matcher:   match,
 		reporters: reporters,
 		defaults:  defaults,
 	}
@@ -123,6 +130,10 @@ func (m *Monitor) cleanupRecent() {
 }
 
 func (m *Monitor) checkFailure(failure complainer.Failure, first bool) bool {
+	if !m.matcher.Match(failure.Framework) {
+		return false
+	}
+
 	if !m.recent[failure.ID].IsZero() {
 		return false
 	}

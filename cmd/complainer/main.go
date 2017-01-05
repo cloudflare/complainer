@@ -5,15 +5,35 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/cloudflare/complainer/flags"
+	"github.com/cloudflare/complainer/matcher"
 	"github.com/cloudflare/complainer/mesos"
 	"github.com/cloudflare/complainer/monitor"
 	"github.com/cloudflare/complainer/reporter"
 	"github.com/cloudflare/complainer/uploader"
 )
+
+type regexArrayFlags []*regexp.Regexp
+
+func (a *regexArrayFlags) String() string {
+	var l []string
+	for _, r := range *a {
+		l = append(l, r.String())
+	}
+	return strings.Join(l, ", ")
+}
+
+func (a *regexArrayFlags) Set(value string) error {
+	r, err := regexp.Compile(value)
+	if r != nil {
+		*a = append(*a, r)
+	}
+	return err
+}
 
 func main() {
 	name := flags.String("name", "COMPLAINER_NAME", monitor.DefaultName, "complainer name to use (default is implicit)")
@@ -22,6 +42,10 @@ func main() {
 	r := flags.String("reporters", "COMPLAINER_REPORTERS", "", "reporters to use (example: sentry,hipchat,slack,file)")
 	masters := flags.String("masters", "COMPLAINER_MASTERS", "", "list of master urls: http://host:port,http://host:port")
 	listen := flags.String("listen", "COMPLAINER_LISTEN", "", "http listen address")
+	var whitelist regexArrayFlags
+	var blacklist regexArrayFlags
+	flag.Var(&whitelist, "framework-whitelist", "list of regexes that if a framework name matches, will be reported")
+	flag.Var(&blacklist, "framework-blacklist", "list of regexes that if a framework name matches, is ignored")
 
 	uploader.RegisterFlags()
 	reporter.RegisterFlags()
@@ -49,9 +73,10 @@ func main() {
 		log.Fatalf("Cannot create requested reporters: %s", err)
 	}
 
+	matcher := matcher.RegexMatcher{Whitelist: whitelist, Blacklist: blacklist}
 	cluster := mesos.NewCluster(strings.Split(*masters, ","))
 
-	m := monitor.NewMonitor(*name, cluster, up, reporters, *d)
+	m := monitor.NewMonitor(*name, cluster, up, reporters, *d, &matcher)
 
 	serve(m, *listen)
 
