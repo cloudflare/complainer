@@ -31,7 +31,7 @@ type fileReporter struct {
 }
 
 func newFileReporter(file, format string) (*fileReporter, error) {
-	f, err := os.OpenFile(file, os.O_APPEND|os.O_CREATE, 0666)
+	f, err := os.OpenFile(file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		return nil, err
 	}
