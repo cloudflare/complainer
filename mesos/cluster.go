@@ -46,7 +46,7 @@ func (c *Cluster) Failures() ([]complainer.Failure, error) {
 	state := &masterState{}
 
 	for _, master := range c.masters {
-		resp, err := c.client.Get(master + "/master/state")
+		resp, err := c.client.Get(strings.TrimSuffix(master, "/") + "/master/state")
 		if err != nil {
 			log.Printf("Error fetching state from %s: %s", master, err)
 			continue
