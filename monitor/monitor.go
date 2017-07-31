@@ -26,6 +26,7 @@ const (
 // Monitor is responsible for routing failed tasks to the configured reporters
 type Monitor struct {
 	name      string
+	version   string
 	mesos     *mesos.Cluster
 	uploader  uploader.Uploader
 	matcher   matcher.FailureMatcher
@@ -37,13 +38,14 @@ type Monitor struct {
 }
 
 // NewMonitor creates the new monitor with a name, uploader and reporters
-func NewMonitor(name string, cluster *mesos.Cluster, up uploader.Uploader, reporters map[string]reporter.Reporter, defaults bool, match matcher.FailureMatcher) *Monitor {
+func NewMonitor(name, version string, cluster *mesos.Cluster, up uploader.Uploader, reporters map[string]reporter.Reporter, defaults bool, match matcher.FailureMatcher) *Monitor {
 	if match == nil {
 		match = &matcher.NoopMatcher{}
 	}
 
 	return &Monitor{
 		name:      name,
+		version:   version,
 		mesos:     cluster,
 		uploader:  up,
 		matcher:   match,
@@ -60,6 +62,9 @@ func (m *Monitor) ListenAndServe(addr string) error {
 	// health check
 	mux.HandleFunc("/health", m.handleHealthCheck)
 
+	// version
+	mux.HandleFunc("/version", m.handleVersion)
+
 	// pprof
 	mux.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
 	mux.Handle("/debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
@@ -68,6 +73,11 @@ func (m *Monitor) ListenAndServe(addr string) error {
 	mux.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
 
 	return http.ListenAndServe(addr, mux)
+}
+
+func (m *Monitor) handleVersion(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "complainer (%s) v%s\n", m.name, m.version)
 }
 
 func (m *Monitor) handleHealthCheck(w http.ResponseWriter, r *http.Request) {

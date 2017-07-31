@@ -17,6 +17,11 @@ import (
 	"github.com/cloudflare/complainer/uploader"
 )
 
+const (
+	// Version of complainer
+	Version = "1.7.0"
+)
+
 type regexArrayFlags []*regexp.Regexp
 
 func (a *regexArrayFlags) String() string {
@@ -76,7 +81,7 @@ func main() {
 	matcher := matcher.RegexMatcher{Whitelist: whitelist, Blacklist: blacklist}
 	cluster := mesos.NewCluster(strings.Split(*masters, ","))
 
-	m := monitor.NewMonitor(*name, cluster, up, reporters, *d, &matcher)
+	m := monitor.NewMonitor(*name, Version, cluster, up, reporters, *d, &matcher)
 
 	serve(m, *listen)
 
