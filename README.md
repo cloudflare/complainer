@@ -52,6 +52,11 @@ a parameter, unless otherwise specified. Valid syntaxes for parametrized options
 |              | `PORT`                 | | If `-listen`/`COMPLAINER_LISTEN` is not defined, but `PORT` is, complainer will start the HTTP listener on the port `PORT`. This value must be a plain integer without the preceding colon |
 | `-framework-whitelist` | | | List of regexps. Only frameworks whose names match the list are reported |
 | `-framework-blacklist` | | | List of regexps. Frameworks whose names match the list are not reported |
+| `-logfile` | `COMPLAINER_LOGFILE` | | Name of file to write logs to|
+| `-loglevel` | `COMPLAINER_LOGLEVEL` | | Log level; one of `Debug`, `Info`, `Warn`, `Error`, `Fatal`, `Panic` |
+| `-log-all-tasks` | `COMPLAINER_LOG_ALL_TASKS` | ? | Log all tasks at Debug level - extremely verbose |
+| `-run-once` | `COMPLAINER_` | ? | Run checks only once and exit |
+| `-help` | | ? | Show usage instruction |
 ||||||
 | `-s3aws.access_key`     | `S3_ACCESS_KEY` | | S3 access key |
 | `-s3aws.secret_key`     | `S3_SECRET_KEY` | | S3 secret key |
