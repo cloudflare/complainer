@@ -2,7 +2,7 @@
 
 .PHONY: all clean complainer complainer.linux complainer.mac docker docker-dev upload-docker print-docker-repo-tag require-docker-account pre-commit vet lint fmt fmt-list fmt-diff fmt-check ineffassign
 
-VERSION ?= 1.6.1-ppar-dev
+VERSION ?= dev
 DOCKER_IMAGE_NAME ?= complainer
 DOCKER_ACCOUNT ?= $(shell if [ -e env.sh ]; then . env.sh ; echo $$_DOCKER_ACCOUNT ; fi)
 
