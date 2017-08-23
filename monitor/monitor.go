@@ -2,11 +2,12 @@ package monitor
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/pprof"
 	"sync"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/cloudflare/complainer"
 	"github.com/cloudflare/complainer/label"
@@ -34,6 +35,7 @@ type Monitor struct {
 	recent    map[string]time.Time
 	mu        sync.Mutex
 	err       error
+	log       *log.Entry
 }
 
 // NewMonitor creates the new monitor with a name, uploader and reporters
@@ -49,6 +51,7 @@ func NewMonitor(name string, cluster *mesos.Cluster, up uploader.Uploader, repor
 		matcher:   match,
 		reporters: reporters,
 		defaults:  defaults,
+		log:       log.WithField("module", "monitor"),
 	}
 }
 
@@ -71,35 +74,48 @@ func (m *Monitor) ListenAndServe(addr string) error {
 }
 
 func (m *Monitor) handleHealthCheck(w http.ResponseWriter, r *http.Request) {
+	logger := m.log.WithField("func", "handleHealthCheck")
+
 	m.mu.Lock()
 	err := m.err
 	m.mu.Unlock()
 
 	if err == nil {
-		if _, err = w.Write([]byte("I am mostly okay, thanks.\n")); err != nil {
-			log.Printf("Error responding that we're okay: %s", err)
+		logger.Debug("GET /health: 200 OK")
+		if _, httpErr := w.Write([]byte("I am mostly okay, thanks.\n")); httpErr != nil {
+			logger.Errorf("/health: status healthy, but could not write HTTP response %s", httpErr)
 		}
 
 		return
 	}
 
+	logger.Warningf("GET /health: Health check failing: %s", err)
 	w.WriteHeader(http.StatusInternalServerError)
-	if _, err = w.Write([]byte(fmt.Sprintf("Something is fishy: %s\n", err))); err != nil {
-		log.Printf("Error responding that we're not okay: %s", err)
+	if _, httpErr := w.Write([]byte(fmt.Sprintf("Something is fishy: %s\n", err))); httpErr != nil {
+		log.Errorf("/health: status unhealthy (%s), additionally could not write HTTP response: %s", err, httpErr)
 	}
 }
 
 // Run does one run across failed tasks and reports any new failures
 func (m *Monitor) Run() error {
+	logger := m.log.WithField("func", "Run")
+
+	logger.Debug("Retrieving failures...")
 	failures, err := m.mesos.Failures()
+
 	defer func() {
+		if err == nil {
+			logger.Debugf("Clearing monitor error status")
+		} else {
+			logger.Debugf("Setting monitor status to err: %s", err)
+		}
 		m.mu.Lock()
 		m.err = err
 		m.mu.Unlock()
 	}()
 
 	if err != nil {
-		return err
+		return fmt.Errorf("m.mesos.Failures(): %s", err)
 	}
 
 	first := false
@@ -110,8 +126,9 @@ func (m *Monitor) Run() error {
 
 	for _, failure := range failures {
 		if m.checkFailure(failure, first) {
+			logger.Debugf("Processing failure %s", failure.ID)
 			if err := m.processFailure(failure); err != nil {
-				log.Printf("Error reporting failure of %s: %s", failure.ID, err)
+				log.Errorf("Error reporting failure of %s: %s", failure.ID, err)
 			}
 		}
 	}
@@ -130,28 +147,37 @@ func (m *Monitor) cleanupRecent() {
 }
 
 func (m *Monitor) checkFailure(failure complainer.Failure, first bool) bool {
+	logger := m.log.WithFields(log.Fields{"func": "checkFailure", "failureID": failure.ID})
+
 	if !m.matcher.Match(failure.Framework) {
+		logger.Debug("Skipping (framework does not match)")
 		return false
 	}
 
 	if !m.recent[failure.ID].IsZero() {
+		logger.Debug("Skipping (recent)")
 		return false
 	}
 
 	m.recent[failure.ID] = failure.Finished
 
 	if time.Since(failure.Finished) > timeout/2 {
+		logger.Debug("Skipping (timeout)")
 		return false
 	}
 
 	if first {
+		logger.Debug("Skipping (first)")
 		return false
 	}
 
+	logger.Debug("Checks passed")
 	return true
 }
 
 func (m *Monitor) processFailure(failure complainer.Failure) error {
+	logger := m.log.WithFields(log.Fields{"func": "processFailure", "failureID": failure.ID})
+
 	labels := label.NewLabels(m.name, failure.Labels, m.defaults)
 
 	skip := true
@@ -160,29 +186,31 @@ func (m *Monitor) processFailure(failure complainer.Failure) error {
 			skip = false
 		}
 	}
-
 	if skip {
-		log.Printf("Skipping %s", failure)
+		logger.Info("Skipping failure (labels)")
 		return nil
 	}
 
-	log.Printf("Reporting %s", failure)
+	logger.Info("Processing failure")
 
+	logger.Info("Getting log URLs")
 	stdoutURL, stderrURL, err := m.mesos.Logs(failure)
 	if err != nil {
-		return fmt.Errorf("cannot get stdout and stderr urls from mesos: %s", err)
+		return fmt.Errorf("cannot get stdout and stderr urls: m.mesos.Logs(): %s", err)
 	}
 
+	logger.Info("Uploading logs")
 	stdoutURL, stderrURL, err = m.uploader.Upload(failure, stdoutURL, stderrURL)
 	if err != nil {
-		return fmt.Errorf("cannot get stdout and stderr urls from uploader: %s", err)
+		return fmt.Errorf("cannot get stdout and stderr urls: m.uploader.Upload(): %s", err)
 	}
 
+	logger.Info("Launching reporter(s)")
 	for n, r := range m.reporters {
 		for _, i := range labels.Instances(n) {
 			config := reporter.NewConfigProvider(labels, n, i)
 			if err := r.Report(failure, config, stdoutURL, stderrURL); err != nil {
-				log.Printf("Cannot generate report with %s [instance=%s] for task with ID %s: %s", n, i, failure.ID, err)
+				logger.Errorf("Cannot generate report with %s [instance=%s]: r.Report(): %s", n, i, err)
 			}
 		}
 	}

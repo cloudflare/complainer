@@ -3,6 +3,9 @@ package reporter
 import (
 	"os"
 
+	log "github.com/sirupsen/logrus"
+
+	"fmt"
 	"github.com/cloudflare/complainer"
 	"github.com/cloudflare/complainer/flags"
 )
@@ -28,6 +31,7 @@ func init() {
 type fileReporter struct {
 	file   *os.File
 	format string
+	log    *log.Entry
 }
 
 func newFileReporter(file, format string) (*fileReporter, error) {
@@ -39,15 +43,23 @@ func newFileReporter(file, format string) (*fileReporter, error) {
 	return &fileReporter{
 		file:   f,
 		format: format,
+		log:    log.WithField("module", "reporter/file"),
 	}, nil
 }
 
 func (f *fileReporter) Report(failure complainer.Failure, config ConfigProvider, stdoutURL string, stderrURL string) error {
+	logger := f.log.WithField("func", "Report")
+
 	s, err := fillTemplate(failure, config, stdoutURL, stderrURL, f.format)
 	if err != nil {
-		return err
+		return fmt.Errorf("fillTemplate(): %s", err)
 	}
 
+	logger.Infof("File reporter: reporting failure of %s", failure.ID)
+
 	_, err = f.file.WriteString(s)
-	return err
+	if err != nil {
+		return fmt.Errorf("WriteString(): %s", err)
+	}
+	return nil
 }

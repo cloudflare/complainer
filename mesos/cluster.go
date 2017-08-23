@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/cloudflare/complainer"
 )
@@ -22,57 +23,75 @@ const (
 
 // Cluster represents Mesos cluster
 type Cluster struct {
-	masters []string
-	client  http.Client
+	masters     []string
+	client      http.Client
+	log         *log.Entry
+	logAllTasks bool
 }
 
 // NewCluster creates a new cluster with the provided list of masters
-func NewCluster(masters []string) *Cluster {
+func NewCluster(masters []string, logAllTasks bool) *Cluster {
 	var cleanMasters []string
 	for _, master := range masters {
 		cleanMasters = append(cleanMasters, strings.TrimSuffix(master, "/"))
 	}
+
+	logger := log.WithField("module", "mesos")
+	logger.Debugf("Masters: %+v", cleanMasters)
 
 	return &Cluster{
 		masters: cleanMasters,
 		client: http.Client{
 			Timeout: time.Second * 30,
 		},
+		log:         logger,
+		logAllTasks: logAllTasks,
 	}
 }
 
-// Failures returns the list of known failes tasks
+// Failures returns the list of known failed tasks
 func (c *Cluster) Failures() ([]complainer.Failure, error) {
 	state := &masterState{}
+	logger := c.log.WithField("func", "Failures")
 
 	for _, master := range c.masters {
+		logger.Debug("Getting state from " + master + "/master/state")
 		resp, err := c.client.Get(master + "/master/state")
 		if err != nil {
-			log.Printf("Error fetching state from %s: %s", master, err)
+			logger.Errorf("Error fetching state from %s: %s", master, err)
 			continue
 		}
 
 		defer func() {
-			_ = resp.Body.Close()
+			err := resp.Body.Close()
+			if err != nil {
+				logger.Warnf("Failed to close response body: %s", err)
+			}
 		}()
 
+		logger.Debugf("Decoding master state...")
 		err = json.NewDecoder(resp.Body).Decode(state)
 		if err != nil {
-			log.Printf("Error decoding state from %s: %s", master, err)
+			logger.Errorf("Error decoding JSON state data from %s: %s", master, err)
 			continue
 		}
 
 		if state.Pid != state.Leader {
+			logger.Debugf("Master %s is not the leader: state.Pid %s != state.Leader %s",
+				master, state.Pid, state.Leader)
 			continue
 		}
 
+		logger.Debugf("Leader found, retrieving failures: %s", master)
 		return c.failuresFromLeader(state), nil
 	}
 
+	logger.Error("No leading master found!")
 	return nil, ErrNoMesosMaster
 }
 
 func (c *Cluster) failuresFromLeader(state *masterState) []complainer.Failure {
+	logger := c.log.WithField("func", "failuresFromLeader")
 	failures := []complainer.Failure{}
 
 	hosts := map[string]string{}
@@ -80,9 +99,20 @@ func (c *Cluster) failuresFromLeader(state *masterState) []complainer.Failure {
 		hosts[slave.ID] = slave.Host
 	}
 
+	totalCompleted := 0
+	totalOk := 0
 	for _, framework := range state.Frameworks {
+		logger.Debugf("Framework %s: scanning %d completed tasks", framework.Name, len(framework.CompletedTasks))
+		totalCompleted += len(framework.CompletedTasks)
+
 		for _, task := range framework.CompletedTasks {
 			if task.State != "TASK_FAILED" && task.State != "TASK_ERROR" && task.State != "TASK_LOST" {
+				// This would be too verbose even for normal debugging (1000 completed tasks/framework)
+				if c.logAllTasks {
+					logger.Debugf("Task OK: %s: %s/%s on %s",
+						framework.Name, task.Name, task.ID, hosts[task.SlaveID])
+				}
+				totalOk++
 				continue
 			}
 
@@ -102,6 +132,12 @@ func (c *Cluster) failuresFromLeader(state *masterState) []complainer.Failure {
 				state = task.Statuses[len(task.Statuses)-1].State
 			}
 
+			if c.logAllTasks {
+				logger.Debugf("Task FAILED: %s: %s/%s: on %s/%s, t0=%s, t1=%s, %+v",
+					framework.Name, task.Name, task.ID, hosts[task.SlaveID], task.SlaveID,
+					time.Unix(startedAt, 0), time.Unix(finishedAt, 0), labels)
+			}
+
 			failures = append(failures, complainer.Failure{
 				ID:        task.ID,
 				Name:      task.Name,
@@ -116,11 +152,13 @@ func (c *Cluster) failuresFromLeader(state *masterState) []complainer.Failure {
 		}
 	}
 
+	logger.Debugf("Found %d failed and %d successful tasks, %d in total", len(failures), totalOk, totalCompleted)
 	return failures
 }
 
 // Logs returns stdout and stderr urls fot the specified task
 func (c *Cluster) Logs(failure complainer.Failure) (stdoutURL, stderrURL string, err error) {
+	logger := c.log.WithField("func", "Logs")
 	state, err := c.slaveState(failure.Slave)
 	if err != nil {
 		return "", "", err
@@ -134,26 +172,32 @@ func (c *Cluster) Logs(failure complainer.Failure) (stdoutURL, stderrURL string,
 				stdoutURL = sandboxURL(failure.Slave, executor.Directory, "stdout")
 				stderrURL = sandboxURL(failure.Slave, executor.Directory, "stderr")
 
+				logger.Debugf("Sandbox stdout URL for %s: %s", failure.ID, stdoutURL)
+				logger.Debugf("Sandbox stderr URL for %s: %s", failure.ID, stderrURL)
 				return stdoutURL, stderrURL, nil
 			}
 		}
 	}
 
-	return "", "", fmt.Errorf("cannot find executor by ID (%s)", failure.ID)
+	return "", "", fmt.Errorf("No executor found while retrievind sandbox stdout/stderr URLs for ID (%s)", failure.ID)
 }
 
 func (c *Cluster) slaveState(host string) (*slaveState, error) {
+	logger := c.log.WithField("func", "slaveState")
 	state := &slaveState{}
+	url := "http://" + host + ":5051/state"
 
-	resp, err := c.client.Get("http://" + host + ":5051/state")
+	logger.Debugf("Retrieving slave state from %s", url)
+	resp, err := c.client.Get(url)
 	if err != nil {
-		return state, err
+		return state, fmt.Errorf("Could not retrieve slave state from %s: %s", url, err)
 	}
 
 	defer func() {
 		_ = resp.Body.Close()
 	}()
 
+	logger.Debugf("Decoding slave state...")
 	return state, json.NewDecoder(resp.Body).Decode(state)
 }
 

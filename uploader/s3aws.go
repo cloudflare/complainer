@@ -3,10 +3,12 @@ package uploader
 import (
 	"bytes"
 	"errors"
+	log "github.com/sirupsen/logrus"
 	"path"
 	"text/template"
 	"time"
 
+	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -46,16 +48,19 @@ type s3AwsUploader struct {
 	bucket  string
 	prefix  *template.Template
 	timeout time.Duration
+	log     *log.Entry
 }
 
 func newS3AwsUploader(accessKey, secretKey, region, bucket, prefix string, timeout time.Duration) (*s3AwsUploader, error) {
+	logger := log.WithField("module", "uploader/s3aws")
+
 	if accessKey == "" || secretKey == "" || region == "" || bucket == "" {
 		return nil, errors.New("s3 configuration is incomplete")
 	}
 
 	tmpl, err := template.New("").Parse(prefix)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to create template: %s", err)
 	}
 
 	return &s3AwsUploader{
@@ -66,38 +71,58 @@ func newS3AwsUploader(accessKey, secretKey, region, bucket, prefix string, timeo
 		bucket:  bucket,
 		timeout: timeout,
 		prefix:  tmpl,
+		log:     logger,
 	}, nil
 }
 
 func (u *s3AwsUploader) Upload(failure complainer.Failure, stdoutURL, stderrURL string) (string, string, error) {
+	logger := u.log.WithField("func", "Upload")
+
 	buf := bytes.NewBuffer([]byte{})
 	err := u.prefix.Execute(buf, map[string]interface{}{"failure": failure})
+	if err != nil {
+		return "", "", fmt.Errorf("prefix.Execute(): %s", err)
+	}
 	prefix := string(buf.Bytes())
+	logger.Debugf("Prefix: %s", prefix)
 
-	stdout, err := download(stdoutURL)
+	signedStdoutURL, err := u.uploadDownload("stdout", stdoutURL, prefix)
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("Transferring stdout to S3 failed: %s", err)
 	}
 
-	signedStdoutURL, err := u.upload(path.Join(prefix, "stdout"), stdout)
+	signedStderrURL, err := u.uploadDownload("stderr", stderrURL, prefix)
 	if err != nil {
-		return "", "", err
-	}
-
-	stderr, err := download(stderrURL)
-	if err != nil {
-		return "", "", err
-	}
-
-	signedStderrURL, err := u.upload(path.Join(prefix, "stderr"), stderr)
-	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("Transferring stderr to S3 failed: %s", err)
 	}
 
 	return signedStdoutURL, signedStderrURL, nil
 }
 
+func (u *s3AwsUploader) uploadDownload(name string, downloadURL string, uploadPrefix string) (string, error) {
+	logger := u.log.WithField("func", "uploadDownload")
+
+	logger.Infof("Downloading %s from %s", name, downloadURL)
+	data, err := download(downloadURL)
+	if err != nil {
+		return "", fmt.Errorf("Failed to download %s from %s: %s", name, downloadURL, err)
+	}
+
+	uploadPath := path.Join(uploadPrefix, name)
+	logger.Infof("Uploading %s to %s", name, uploadPath)
+	signedURL, err := u.upload(uploadPath, data)
+	if err != nil {
+		return "", fmt.Errorf("Failed to upload %s to %s: %s", name, uploadPath, err)
+	}
+
+	logger.Infof("Signed %s URL: %s", name, signedURL)
+	return signedURL, nil
+}
+
 func (u *s3AwsUploader) upload(key string, data []byte) (string, error) {
+	logger := u.log.WithField("func", "upload")
+
+	logger.Debugf("PUTting object to bucket %s, key %s", u.bucket, key)
 	_, err := u.s3.PutObject(&s3.PutObjectInput{
 		ACL:           aws.String(s3.ObjectCannedACLPrivate),
 		Body:          bytes.NewReader(data),
@@ -107,9 +132,10 @@ func (u *s3AwsUploader) upload(key string, data []byte) (string, error) {
 		Key:           aws.String(key),
 	})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("Failed to PUT S3 object %s to %s: %s", key, u.bucket, err)
 	}
 
+	logger.Debug("Getting object request for bucket %s, key %s", u.bucket, key)
 	r, _ := u.s3.GetObjectRequest(&s3.GetObjectInput{
 		Bucket: aws.String(u.bucket),
 		Key:    aws.String(key),
