@@ -22,9 +22,16 @@ for var in $(grep -vE "${RE}" env.sh | cut -d= -f1) ; do
     ENV_ARG="${ENV_ARG} -e ${var} "
 done
 
+VOL_ARG=""
+if [ \! -z "${_DOCKER_HOST_VAR}" ]; then
+    mkdir ${_DOCKER_HOST_VAR}
+    VOL_ARG="--volume ${_DOCKER_HOST_VAR}:/var/log/mesos-complainer"
+fi
+
 set -x
 docker run \
        ${ENV_ARG} \
        ${PORT_ARG} \
+       ${VOL_ARG} \
        --rm \
        $(DOCKER_ACCOUNT=$_DOCKER_ACCOUNT make print-docker-repo-tag)
