@@ -55,7 +55,7 @@ docker-dev:
 # Only upload if the image name is "<accountname>/<imagename>:<tag>"
 upload-docker:
 	@if [ -z $(DOCKER_ACCOUNT) ]; then echo ERROR: Variable DOCKER_ACCOUNT missing ; exit 1; fi
-	echo docker push $(DOCKER_REPO_TAG)
+	docker push $(DOCKER_REPO_TAG)
 
 print-docker-repo-tag:
 	@echo $(DOCKER_REPO_TAG)
