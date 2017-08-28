@@ -19,7 +19,7 @@ func TestNewCluster(t *testing.T) {
 		"http://master4.com/fancy/path",
 	}
 
-	cluster := NewCluster(inputMasters)
+	cluster := NewCluster(inputMasters, false)
 	if cluster == nil {
 		t.Error("Cluster is nil. Expected mesos.Cluster pointer.")
 	}

@@ -1,7 +1,7 @@
 {
 	"ImportPath": "github.com/cloudflare/complainer",
 	"GoVersion": "go1.7",
-	"GodepVersion": "v74",
+	"GodepVersion": "v79",
 	"Packages": [
 		"./..."
 	],
@@ -171,6 +171,11 @@
 			"Rev": "bd40a432e4c76585ef6b72d3fd96fb9b6dc7b68d"
 		},
 		{
+			"ImportPath": "github.com/sirupsen/logrus",
+			"Comment": "v1.0.3-11-g89742ae",
+			"Rev": "89742aefa4b206dcf400792f3bd35b542998eb3b"
+		},
+		{
 			"ImportPath": "github.com/tbruyelle/hipchat-go/hipchat",
 			"Comment": "v1.2-5-gef106fc",
 			"Rev": "ef106fc660ae9ebba7840c5b37c6ffcd90448d7a"
@@ -182,6 +187,18 @@
 		{
 			"ImportPath": "github.com/vaughan0/go-ini",
 			"Rev": "a98ad7ee00ec53921f08832bc06ecf7fd600e6a1"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/ssh/terminal",
+			"Rev": "eb71ad9bd329b5ac0fd0148dd99bd62e8be8e035"
+		},
+		{
+			"ImportPath": "golang.org/x/sys/unix",
+			"Rev": "07c182904dbd53199946ba614a412c61d3c548f5"
+		},
+		{
+			"ImportPath": "golang.org/x/sys/windows",
+			"Rev": "07c182904dbd53199946ba614a412c61d3c548f5"
 		}
 	]
 }

@@ -2,8 +2,10 @@ package reporter
 
 import (
 	"errors"
+	log "github.com/sirupsen/logrus"
 	"net/url"
 
+	"fmt"
 	"github.com/cloudflare/complainer"
 	"github.com/cloudflare/complainer/flags"
 	"github.com/tbruyelle/hipchat-go/hipchat"
@@ -36,6 +38,7 @@ type hipchatReporter struct {
 	room     string
 	clients  map[hipchatClientIdentity]*hipchat.Client
 	format   string
+	log      *log.Entry
 }
 
 func newHipchatReporter(baseURL, token, room, format string) *hipchatReporter {
@@ -47,6 +50,7 @@ func newHipchatReporter(baseURL, token, room, format string) *hipchatReporter {
 		room:    room,
 		clients: map[hipchatClientIdentity]*hipchat.Client{},
 		format:  format,
+		log:     log.WithField("module", "reporter/hipchat"),
 	}
 }
 
@@ -67,7 +71,7 @@ func (h *hipchatReporter) client(baseURL, token string) (*hipchat.Client, error)
 	client := hipchat.NewClient(token)
 	parsedURL, err := url.Parse(baseURL)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("hipchatReporter.client(): Failed to parse url \"%s\": %s", baseURL, err)
 	}
 
 	client.BaseURL = parsedURL
@@ -78,6 +82,8 @@ func (h *hipchatReporter) client(baseURL, token string) (*hipchat.Client, error)
 }
 
 func (h *hipchatReporter) Report(failure complainer.Failure, config ConfigProvider, stdoutURL string, stderrURL string) error {
+	logger := h.log.WithField("func", "Report")
+
 	baseURL := config("base_url")
 	if baseURL == "" {
 		baseURL = h.identity.baseURL
@@ -94,18 +100,23 @@ func (h *hipchatReporter) Report(failure complainer.Failure, config ConfigProvid
 	}
 
 	if baseURL == "" || token == "" || room == "" {
+		// TODO: return error to caller?
+		logger.Errorf("Mandatory value(s) absent: baseURL=\"%s\", token=\"%s\", room=\"%s\"",
+			baseURL, token, room)
 		return nil
 	}
 
 	client, err := h.client(baseURL, token)
 	if err != nil {
-		return err
+		return fmt.Errorf("client(): %s", err)
 	}
 
 	message, err := fillTemplate(failure, config, stdoutURL, stderrURL, h.format)
 	if err != nil {
-		return err
+		return fmt.Errorf("fillTemplate(): %s", err)
 	}
+
+	logger.Debugf("Sending hipchat notification to room \"%s\": %s", room, message)
 
 	resp, err := client.Room.Notification(room, &hipchat.NotificationRequest{
 		MessageFormat: "html",
@@ -120,9 +131,10 @@ func (h *hipchatReporter) Report(failure complainer.Failure, config ConfigProvid
 				_ = resp.Body.Close()
 			}
 		}()
+		return fmt.Errorf("Error sending hipchat notification: client.Room.Notification(): %s", err)
 	}
 
-	return err
+	return nil
 }
 
 type hipchatClientIdentity struct {

@@ -2,7 +2,7 @@ package flags
 
 import (
 	"flag"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"os"
 	"strconv"
 	"time"

@@ -3,9 +3,11 @@ package reporter
 import (
 	"bytes"
 	"encoding/json"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	"net/url"
 
+	"fmt"
 	"github.com/cloudflare/complainer"
 	"github.com/cloudflare/complainer/flags"
 )
@@ -43,6 +45,7 @@ type slackReporter struct {
 	iconEmoji string
 	iconURL   string
 	format    string
+	log       *log.Entry
 }
 
 type slackMessage struct {
@@ -66,13 +69,18 @@ func newSlackReporter(hookURL, username, channel, iconEmoji, iconURL, format str
 		iconEmoji: iconEmoji,
 		iconURL:   iconURL,
 		format:    format,
+		log:       log.WithField("module", "reporter/slack"),
 	}, nil
 }
 
 func (s *slackReporter) Report(failure complainer.Failure, config ConfigProvider, stdoutURL string, stderrURL string) error {
+	logger := s.log.WithField("func", "Report")
+
+	logger.Debugf("Reporting failure via Slack: %s", failure.ID)
+
 	text, err := fillTemplate(failure, config, stdoutURL, stderrURL, s.format)
 	if err != nil {
-		return err
+		return fmt.Errorf("fillTemplate(): %s", err)
 	}
 
 	m := &slackMessage{
@@ -83,10 +91,12 @@ func (s *slackReporter) Report(failure complainer.Failure, config ConfigProvider
 	if u := config("hook_url"); len(u) > 0 {
 		hookURL, err = url.Parse(u)
 		if err != nil {
-			return err
+			return fmt.Errorf("Failed to parse config->hook_url \"%s\": %s", u, err)
 		}
+		logger.Debugf("Using hook_url found in config (%s), parsed to %s", u, hookURL.String())
 
 	} else {
+		logger.Debugf("Using s.hookURL %s", s.hookURL.String())
 		hookURL = s.hookURL
 	}
 
@@ -96,6 +106,7 @@ func (s *slackReporter) Report(failure complainer.Failure, config ConfigProvider
 	// You don't always want to report all failures to all reporters.
 	// If some required parameter is missing, just silently return from Report().
 	if hookURL == nil {
+		logger.Debugf("hookURL not defined, not reporting this failure to Slack")
 		return nil
 	}
 
@@ -104,20 +115,26 @@ func (s *slackReporter) Report(failure complainer.Failure, config ConfigProvider
 
 	jsonMessage, err := json.Marshal(m)
 	if err != nil {
-		return err
+		return fmt.Errorf("Error marshaling slack message %+v to JSON: %s", m, err)
 	}
 
+	logger.Infof("POSTing slack message to %s: %s", hookURL.String(), jsonMessage)
 	body := bytes.NewReader(jsonMessage)
 	resp, err := http.Post(hookURL.String(), "application/json", body)
 	if err != nil {
 		defer func() {
 			if resp != nil {
-				_ = resp.Body.Close()
+				err := resp.Body.Close()
+				if err != nil {
+					logger.Errorf("Failed to close response body: %s", err)
+				}
 			}
 		}()
+		return fmt.Errorf("Failed to POST slack message: url=%s, body=%s, err=%s", hookURL.String(), jsonMessage, err)
 	}
 
-	return err
+	logger.Debug("Message posted successfully")
+	return nil
 }
 
 func (s *slackReporter) fillConfigValues(m *slackMessage, config ConfigProvider) {

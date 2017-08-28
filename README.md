@@ -32,26 +32,76 @@ Run this on Mesos itself!
 
 ![Sentry screenshot](screenshots/sentry.png)
 
-## Reporting configuration
+## Configuration parameters
 
-Complainer needs two command line flags to configure itself:
+Complainer's runtime configuration can be passed using command line options and via environment variables.
 
-* `name` - Complainer instance name (default is `default`).
-* `default` - Whether to use `default` instance for each reporter implicitly.
-* `masters` - Mesos master URL list (ex: `http://host:port,http://host:port`).
-* `listen` - Listen address for HTTP (ex: `127.0.0.1:8888`).
-
-These settings can be applied by env vars as well:
-
-* `COMPLAINER_NAME` - Complainer instance name (default is `default`).
-* `COMPLAINER_DEFAULT` - Whether to use `default` instance for each reporter implicitly.
-* `COMPLAINER_MASTERS` - Mesos master URL list (ex: `http://host:port,http://host:port`).
-* `COMPLAINER_LISTEN` - Listen address for HTTP (ex: `127.0.0.1:8888`).
+Values passed on the command line override those in environment variables. All command line options expect 
+a parameter, unless otherwise specified. Valid syntaxes for parametrized options are `-option=parameter` and
+`-option parameter`.
 
 
-## Filtering based on the failures framework
+| Cmdline      | Environment            |   | Description                                                              |
+|--------------|------------------------|---|--------------------------------------------------------------------------|
+| `-masters`   | `COMPLAINER_MASTERS`   | * | Mesos master URL list in the form `http://host:port,http://host:port,...` |
+| `-uploader`  | `COMPLAINER_UPLOADER`  | * | Upload service to enable. One of `noop`, `s3aws`, `s3goamz` |
+| `-reporters` | `COMPLAINER_REPORTERS` | * | Comma-separated list of reporter services to enable |
+| `-name`      | `COMPLAINER_NAME`      | | Complainer instance name (default: `default`) |
+| `-default`   | `COMPLAINER_DEFAULT`   | ? | Whether to use `default` instance for each reporter implicitly |
+| `-listen`    | `COMPLAINER_LISTEN`    | | Listen address for HTTP (example: `127.0.0.1:8888`) |
+|              | `PORT`                 | | If `-listen`/`COMPLAINER_LISTEN` is not defined, but `PORT` is, complainer will start the HTTP listener on the port `PORT`. This value must be a plain integer without the preceding colon |
+| `-framework-whitelist` | | | List of regexps. Only frameworks whose names match the list are reported |
+| `-framework-blacklist` | | | List of regexps. Frameworks whose names match the list are not reported |
+| `-logfile` | `COMPLAINER_LOGFILE` | | Name of file to write logs to|
+| `-loglevel` | `COMPLAINER_LOGLEVEL` | | Log level; one of `Debug`, `Info`, `Warn`, `Error`, `Fatal`, `Panic` |
+| `-log-all-tasks` | `COMPLAINER_LOG_ALL_TASKS` | ? | Log all tasks at Debug level - extremely verbose |
+| `-run-once` | `COMPLAINER_` | ? | Run checks only once and exit |
+| `-help` | | ? | Show usage instruction |
+||||||
+| `-s3aws.access_key`     | `S3_ACCESS_KEY` | | S3 access key |
+| `-s3aws.secret_key`     | `S3_SECRET_KEY` | | S3 secret key |
+| `-s3aws.region`         | `S3_REGION`     | | S3 region |
+| `-s3aws.bucket`         | `S3_BUCKET`     | | S3 bucket name |
+| `-s3aws.prefix`         | `S3_PREFIX`     | | S3 prefix template. "`Failure`" struct is available |
+| `-s3aws.timeout`        | `S3_TIMEOUT`    | | Timeout for signed S3 URLs (ex: `72h`). Default: 7 days |
+||||||
+| `-s3goamz.access_key`   | `S3_ACCESS_KEY` | | S3 access key|
+| `-s3goamz.secret_key`   | `S3_SECRET_KEY` | | S3 secret key|
+| `-s3goamz.endpoint`     | `S3_ENDPOINT`   | | S3 endpoint (ex: `https://complainer.s3.example.com`)|
+| `-s3goamz.bucket`       | `S3_BUCKET`     | | S3 bucket name|
+| `-s3goamz.prefix`       | `S3_PREFIX`     | | S3 prefix template. `Failure` struct is available  |
+| `-s3goamz.timeout`      | `S3_TIMEOUT`    | | Timeout for signed S3 URLs (ex: `72h`)|
+||||||
+| `-sentry.dsn`           | `SENTRY_DSN`    | | Sentry DSN. Default: "" |
+||||||
+| `-hipchat.base_url`     | `HIPCHAT_BASE_URL` | |  Base Hipchat URL, needed for on-premise installations. Default: "`https://api.hipchat.com/v2/`" |
+| `-hipchat.room`         | `HIPCHAT_ROOM`     | |  Default Hipchat room ID to send notifications to |
+| `-hipchat.token`        | `HIPCHAT_TOKEN`    | |  Default Hipchat token to authorize requests |
+| `-hipchat.format`       | `HIPCHAT_FORMAT`   | |  Template to use in messages. |
+||||||
+| `-slack.hook_url`       | `SLACK_HOOK_URL`   | | Webhook URL, needed to post something (required) |
+| `-slack.channel`        | `SLACK_CHANNEL`    | | Channel to post into, e.g. #mesos (optional) |
+| `-slack.username`       | `SLACK_USERNAME`   | | Username to post with, e.g. "Mesos Cluster" (optional) |
+| `-slack.icon_emoji`     | `SLACK_ICON_EMOJI` | | Icon Emoji to post with, e.g. ":mesos:" (optional) |
+| `-slack.icon_url`       | `SLACK_ICON_URL`   | | Icon URL to post with, e.g. "http://my.com/pic.png" (optional) |
+| `-slack.format`         | `SLACK_FORMAT`     | | Template to use in messages |
+||||||
+| `-jira.url`             | `JIRA_URL`         | | Default JIRA instance url (required) |
+| `-jira.username`        | `JIRA_USERNAME`    | | JIRA user to authenticate as (required) |
+| `-jira.password`        | `JIRA_PASSWORD`    | | JIRA password for the user to authenticate (required) |
+| `-jira.issue_closed_status` | `JIRA_ISSUE_CLOSED_STATUS` | | The status of JIRA issue when it is considered closed |
+| `-jira.fields`          | `JIRA_FIELDS` | | JIRA fields, see below |
+||||||
+| `-file.name`            | `FILE_NAME`    | | File name to output logs. Default: /dev/stderr |
+| `-file.format`          | `FILE_FORMAT`  | | Log format |
 
-If you're in the situation where you have multiple marathons running against
+\* = Mandatory option
+
+? = Boolean flag, does not expect a parameter
+
+## Filtering based on the failure's framework
+
+If you're in a situation where you have multiple marathons running against
 a mesos, and want to segregate out which failures go where, the following
 options are of interest. Each option can be specified multiple times.
 
@@ -65,17 +115,17 @@ options are of interest. Each option can be specified multiple times.
 Note that the order of evaluation is such that blacklists are applied first,
 then whitelists.
 
-### HTTP interface
+## HTTP interface
 
-Complainer provides HTTP interface. You have to enable it with `-listen`
-command line flag or with `COMPLAINER_LISTEN` env variable.
+Complainer provides an HTTP interface. You have to enable it using the
+`-listen`/ `COMPLAINER_LISTEN` or `PORT` parameters.
 
 This interface is used for the following:
 
 * Health checks
 * [pprof](https://golang.org/pkg/net/http/pprof/) endpoint
 
-#### Health checks
+### Health checks
 
 `/health` endpoint reports `200 OK` when things are operating mostly normally
 and `500 Internal Server Error` when complainer cannot talk to Mesos.
@@ -83,55 +133,40 @@ and `500 Internal Server Error` when complainer cannot talk to Mesos.
 We don't check for other issues (uploader and reporter failures) because they
 are not guaranteed to be happening continuously to recover themselves.
 
-#### pprof endpoint
+### pprof endpoint
 
 `/debug/pprof` endpoint exposes the regular `net/http/pprof` interface:
 
 * https://golang.org/pkg/net/http/pprof/
 
-### Log upload services
+## Log upload services
 
-Log upload service is specified by command line flag `uploader`.
-Alternatively you can specify this by env var `COMPLAINER_UPLOADER`.
-Only one uploader can be specified per complainer instance.
+Log upload service is specified by the `uploader` /  `COMPLAINER_UPLOADER`
+parameter. Only one uploader can be specified per complainer instance.
 
-#### no-op
+### No-op uploader
 
 Uploader name: `noop`
 
 No-op uploader just echoes Mesos slave sandbox URLs.
 
-#### S3 AWS
+### S3 AWS uploader
 
 Uploader name: `s3aws`.
 
 This uploader uses official AWS SDK and should be used if you use AWS.
 
 Stdout and stderr logs get uploaded to S3 and signed URLs provided to reporters.
-Logs are uploaded into the following directory structure by default:
 
-* `${YYYY-MM-DD}/complainer/${task_name}/${YYYY-MM-DDTHH:mm:ssZ}-${task_id}/{stdout,stderr}`
+Default value for `-s3aws.prefix` / `S3_PREFIX`:
 
-Command line flags:
-
-* `s3aws.access_key` - S3 access key.
-* `s3aws.secret_key` - S3 secret key.
-* `s3aws.region` - S3 region.
-* `s3aws.bucket` - S3 bucket name.
-* `s3aws.prefix` - S3 prefix template (`Failure` struct is available).
-* `s3aws.timeout` - Timeout for signed S3 URLs (ex: `72h`).
-
-You can set value of any command line flag via environment variable. Example:
-
-* Flag `s3aws.access_key` becomes env variable `S3_ACCESS_KEY`
-
-Flags override env variables if both are supplied.
+`complainer/{{ .failure.Finished.UTC.Format \"2006-01-02\" }}/{{ .failure.Name }}/{{ .failure.Finished.UTC.Format \"2006-01-02T15:04:05.000\" }}-{{ .failure.ID }}`
 
 The minimum AWS policy for complainer is `s3:PutObject`:
 
 * https://docs.aws.amazon.com/AmazonS3/latest/dev/using-with-s3-actions.html
 
-##### S3 Compatible APIs
+### S3 Compatible API uploader
 
 Uploader name: `s3goamz`.
 
@@ -139,32 +174,19 @@ This uploader uses goamz package and supports S3 compatible APIs that use
 v2 style signatures. This includes Ceph Rados Gateway.
 
 Stdout and stderr logs get uploaded to S3 and signed URLs provided to reporters.
-Logs are uploaded into the following directory structure by default:
 
-* `${YYYY-MM-DD}/complainer/${task_name}/${YYYY-MM-DDTHH:mm:ssZ}-${task_id}/{stdout,stderr}`
+Default value for `-s3goamz.prefix` / `S3_PREFIX`:
 
-* `s3goamz.access_key` - S3 access key.
-* `s3goamz.secret_key` - S3 secret key.
-* `s3goamz.endpoint` - S3 endpoint (ex: `https://complainer.s3.example.com`).
-* `s3goamz.bucket` - S3 bucket name.
-* `s3goamz.prefix` - S3 prefix template (`Failure` struct is available).
-* `s3goamz.timeout` - Timeout for signed S3 URLs (ex: `72h`).
+`complainer/{{ .failure.Finished.UTC.Format \"2006-01-02\" }}/{{ .failure.Name }}/{{ .failure.Finished.UTC.Format \"2006-01-02T15:04:05.000\" }}-{{ .failure.ID }}`
 
-You can set value of any command line flag via environment variable. Example:
 
-* Flag `s3goamz.access_key` becomes env variable `S3_ACCESS_KEY`
 
-Flags override env variables if both are supplied.
+## Reporting services
 
-### Reporting services
+Reporting services are specified `reporters` / `COMPLAINER_REPORTERS`
+parameter. Several services can be specified, separated by comma.
 
-Reporting services are specified by command line flag `reporters`.
-Alternatively you can specify this by env var `COMPLAINER_REPORTERS`.
-Several services can be specified, separated by comma.
-
-#### Sentry
-
-Command line flags:
+### Sentry reporter
 
 * `sentry.dsn` - Default Sentry DSN to use for reporting.
 
@@ -174,14 +196,11 @@ Labels:
 
 If label is unspecified, command line flag value is used.
 
-#### Hipchat
+### Hipchat reporter
 
-Command line flags:
+Default value for `-hipchat.format` / `HIPCHAT_FORMAT`:
 
-* `hipchat.base_url` - Base Hipchat URL, needed for on-premise installations.
-* `hipchat.room` - Default Hipchat room ID to send notifications to.
-* `hipchat.token` - Default Hipchat token to authorize requests.
-* `hipchat.format` - Template to use in messages.
+`Task {{ .failure.Name }} ({{ .failure.ID }}) died with status {{ .failure.State }} [<a href=\"{{ .stdoutURL }}\">stdout</a>, <a href=\"{{ .stderrURL }}\">stderr</a>]`
 
 Labels:
 
@@ -191,23 +210,7 @@ Labels:
 
 If label is unspecified, command line flag value is used.
 
-Templates are based on [`text/template`](https://golang.org/pkg/text/template/).
-The following fields are available:
-
-* `failure` - Failure struct.
-* `stdoutURL` - URL of the stdout stream.
-* `stderrURL` - URL of the stderr stream.
-
-#### Slack
-
-Command line flags:
-
-* `slack.hook_url` - Webhook URL, needed to post something (required).
-* `slack.channel` - Channel to post into, e.g. #mesos (optional).
-* `slack.username` - Username to post with, e.g. "Mesos Cluster" (optional).
-* `slack.icon_emoji` - Icon Emoji to post with, e.g. ":mesos:" (optional).
-* `slack.icon_url` - Icon URL to post with, e.g. "http://my.com/pic.png" (optional).
-* `slack.format` - Template to use in messages.
+### Slack reporter
 
 Labels:
 
@@ -221,54 +224,21 @@ If label is unspecified, command line flag value is used.
 
 For more details see [Slack API docs](https://api.slack.com/incoming-webhooks).
 
-Templates are based on [`text/template`](https://golang.org/pkg/text/template/).
-The following fields are available:
+### Jira reporter
 
-* `failure` - Failure struct.
-* `stdoutURL` - URL of the stdout stream.
-* `stderrURL` - URL of the stderr stream.
+The `-jira.fields` / `JIRA_FIELDS` parameter defines JIRA fields in `key:value;...` format separated by `;`. It must contain `Project`, `Summary` and `Issue Type`. Default:
 
-### Jira
+`Project:COMPLAINER;Issue Type:Bug;Summary:Task {{ .failure.Name }} died with status {{ .failure.State }};Description:[stdout|{{ .stdoutURL }}], [stderr|{{ .stderrURL }}], ID={{ .failure.ID }}`
 
-Command line flags:
+### File reporter
 
-* `jira.url` - Default JIRA instance url (required).
-* `jira.username` - JIRA user to authenticate as (required).
-* `jira.password` - JIRA password for the user to authenticate (required).
-* `jira.issue_closed_status` - The status of JIRA issue when it is considered closed.
-* `jira.fields` - JIRA fields in `key:value;...` format seperated by `;`,
-   this configuration MUST contain `Project`, `Summary` and `Issue Type`.
+Default value for `-file.format` / `FILE_FORMAT`:
 
-Example `jira.fields`:
+`"Task {{ .failure.Name }} ({{ .failure.ID }}) died with status {{ .failure.State }}:{{ .nl }}  * {{ .stdoutURL }}{{ .nl }}  * {{ .stderrURL }}{{ .nl }}"`
 
-```
-Project:COMPLAINER;Issue Type:Bug;Summary:Task {{ .failure.Name }} died with status {{ .failure.State }};Description:[stdout|{{ .stdoutURL }}], [stderr|{{ .stderrURL }}], ID={{ .failure.ID }}
-```
+## Label configuration
 
-Templates are based on [`text/template`](https://golang.org/pkg/text/template/).
-The following fields are available:
-
-* `failure` - Failure struct.
-* `stdoutURL` - URL of the stdout stream.
-* `stderrURL` - URL of the stderr stream.
-
-#### File
-
-Command line flags:
-
-* `file.name` - File name to output logs.
-* `file.format` - Template to use in output logs.
-
-Templates are based on [`text/template`](https://golang.org/pkg/text/template/).
-The following fields are available:
-
-* `failure` - Failure struct.
-* `stdoutURL` - URL of the stdout stream.
-* `stderrURL` - URL of the stderr stream.
-
-### Label configuration
-
-#### Basics
+### Basics
 
 To support flexible notification system, Mesos task labels are used. Marathon
 task labels get copied to Mesos labels, so these are equivalent.
@@ -290,7 +260,7 @@ This is long and complex, so default parts can be skipped:
 
 * `complainer_sentry_dsn`
 
-#### Advanced labels
+### Advanced labels
 
 The reason for having long label name version is to add the flexibility.
 Imagine you want to report app failures to the internal Sentry, two internal
@@ -314,10 +284,13 @@ Implicit instances are different, depending on how you run Complainer.
 The latter is useful for opt-in monitoring, including monitoring of Complainer
 itself (also known as dogfooding).
 
-#### Templating
+## Configuration templating
 
-Templates are based on [`text/template`](https://golang.org/pkg/text/template/).
-The following fields are available:
+Various configuration parameters support evaluating their values dynamically
+using Golang's [`text/template`](https://golang.org/pkg/text/template/) 
+templating engine.
+
+The following fields are available for creating templates:
 
 * `nl` - Newline symbol (`\n`).
 * `config` - Function to get labels for the reporter.
@@ -338,7 +311,7 @@ With the label `complainer_slack_mentions=@devs` will be evaluated to:
 Task foo.bar (bar.foo.123) died | @devs
 ```
 
-#### Dogfooding
+## Dogfooding
 
 To report errors for complainer itself you need to run two instances:
 
