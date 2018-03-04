@@ -83,6 +83,14 @@ and `500 Internal Server Error` when complainer cannot talk to Mesos.
 We don't check for other issues (uploader and reporter failures) because they
 are not guaranteed to be happening continuously to recover themselves.
 
+#### version endpoint
+
+`/version` endpoint reports `200 OK` and outputs the current version of this application.
+
+```
+complainer (default) v1.7.0
+```
+
 #### pprof endpoint
 
 `/debug/pprof` endpoint exposes the regular `net/http/pprof` interface:
